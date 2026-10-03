@@ -15,6 +15,16 @@
 
 Reglas que aplican a TODO el trabajo: solo devnet, sin claves en repo/chat, toda tx se aprueba a mano mostrando destino/monto/token/red.
 
+## Prioridades del pitch (innegociables)
+
+Funciones "vitrina" — lo que el jurado debe ver funcionando. Si falta tiempo, el orden de recorte es: primero cae T3.5 (batch) y T2.7 (CSV), nunca esto:
+
+- ⭐ **T2.4 Agente verificador** — el diferenciador vs CargoBill ("IA auditable")
+- ⭐ **T2.3 Squads 2/3** — gobernanza real visible
+- ⭐ **T2.5 Pago USDC con hash** — conciliación automática verificable en Explorer
+- ⭐ **T2.6 Privy** — UX invisible (criterio UX del jurado)
+- ⭐ **T3.1 Dashboard conciliación** — la evidencia auditable en pantalla
+
 ---
 
 ## Bloque 0 — Arranque (~45 min, hoy)
