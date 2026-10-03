@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #eef6f4;
+  --surface: #ffffff;
+  --fg: #0b2a33;
+  --link: #0b5563;
+}
+
+[data-theme="dark"] {
+  --bg: #08262c;
+  --surface: #0b2a33;
+  --fg: #eef6f4;
+  --link: #3fd0a8;
+}
+
+@theme inline {
+  --color-fondo: var(--bg);
+  --color-card: var(--surface);
+  --color-tinta: var(--fg);
+  --color-enlace: var(--link);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Logis — Paleta 02 "Petróleo Menta" (Logis-Paleta-02-Petroleo-Menta.pdf) */
+@theme {
+  --color-petroleo: #0b5563;        /* botón principal, enlaces, isotipo superior */
+  --color-petroleo-claro: #9fbec1;  /* isotipo sobre fondo oscuro */
+  --color-menta: #3fd0a8;           /* foco, éxito — nunca texto sobre fondo claro */
+  --color-oscuro: #08262c;          /* paneles fijos */
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Arial, Helvetica, sans-serif;
+}
