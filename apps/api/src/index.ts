@@ -144,6 +144,31 @@ app.patch("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
   return prisma.proveedor.update({ where: { id }, data: body });
 });
 
+app.put("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const body = (req.body ?? {}) as {
+    nombre?: string; cuitOTaxId?: string; pais?: string; email?: string; walletUsdc?: string;
+  };
+  const existente = await prisma.proveedor.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+  });
+  if (!existente) return reply.code(404).send({ error: "proveedor no encontrado" });
+  const proveedor = await prisma.proveedor.update({
+    where: { id },
+    data: {
+      nombre: body.nombre ?? existente.nombre,
+      cuitOTaxId: body.cuitOTaxId ?? existente.cuitOTaxId,
+      pais: body.pais ?? existente.pais,
+      email: body.email ?? existente.email,
+      walletUsdc: body.walletUsdc ?? existente.walletUsdc,
+    },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: req.usuario!.empresaId, entidad: "proveedor", entidadId: id, accion: "editada", actorId: req.usuario!.id },
+  });
+  return proveedor;
+});
+
 app.delete("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
   const { id } = req.params as { id: string };
   const existe = await prisma.proveedor.findFirst({ where: { id, empresaId: req.usuario!.empresaId } });
