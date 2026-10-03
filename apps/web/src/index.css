@@ -55,6 +55,10 @@ code { font-size: 0.8rem; color: #a5d6ff; }
 .nav-links a:hover { color: #e6edf3; }
 .nav-user { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
 
+.wallet-btn { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+.wallet-info { display: flex; align-items: center; gap: 0.5rem; }
+.wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; display: inline-block; }
+
 .contenido { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
 .pagina-header { display: flex; justify-content: space-between; align-items: center; }
 
