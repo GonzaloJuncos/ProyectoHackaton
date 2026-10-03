@@ -1,6 +1,13 @@
 // Contratos de Logis — cuando `packages/shared` exista, estos tipos se importan de ahí.
 export type Rol = "administrador" | "jefe" | "supervisor" | "empleado";
 
+export interface Usuario {
+  email: string;
+  password: string; // demo — en producción nunca se guarda en claro
+  nombre: string;
+  rol: Rol;
+}
+
 export interface Proveedor {
   id: string;
   nombre: string;

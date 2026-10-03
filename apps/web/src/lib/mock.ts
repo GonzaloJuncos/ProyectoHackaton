@@ -1,6 +1,13 @@
-import { Factura, Kpi, Proveedor, Transaccion } from "./types";
+import { Factura, Kpi, Proveedor, Transaccion, Usuario } from "./types";
 
 // ---- Datos base de Logis (mock) ----
+
+export const USUARIOS_MOCK: Usuario[] = [
+  { email: "admin@logis.io", password: "demo123", nombre: "Luli Maris", rol: "administrador" },
+  { email: "jefe@logis.io", password: "demo123", nombre: "Gonzalo Juncos", rol: "jefe" },
+  { email: "super@logis.io", password: "demo123", nombre: "Maxi Pérez", rol: "supervisor" },
+  { email: "empleado@logis.io", password: "demo123", nombre: "Luz García", rol: "empleado" },
+];
 
 export const PROVEEDORES_MOCK: Proveedor[] = [
   { id: "p1", nombre: "Petróleo S.A.", pais: "Argentina", wallet: "7xKX...dE9w", pagos: 5, totalUSDC: 8450, activo: true },

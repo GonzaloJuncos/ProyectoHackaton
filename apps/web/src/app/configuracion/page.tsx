@@ -25,6 +25,7 @@ export default function Configuracion() {
   const cambiarSesion = () => {
     localStorage.removeItem("logis-rol");
     localStorage.removeItem("logis-proveedor");
+    localStorage.removeItem("logis-usuario");
     router.push("/login");
   };
 
