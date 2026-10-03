@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit — ProyectoHackaton (Logis)
+# Config basada en coderabbitai/awesome-coderabbit, adaptada al monorepo:
+# apps/web (React+Vite), apps/api (Fastify+Prisma+SQLite), packages/shared (contratos), programa/ (Solana).
+# Para activarlo: el dueño del repo debe instalar la app de CodeRabbit en GitHub
+# (https://github.com/apps/coderabbitai) y elegir este repositorio.
+
+language: 'es'
+tone_instructions: 'Reseñas concisas, en español rioplatense, alta densidad de información.'
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  poem: false
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  path_instructions:
+    - path: '**/*'
+      instructions: |
+        - NUNCA aprobar un commit que incluya claves privadas, frases semilla ni secrets.
+        - Marcar como crítica cualquier referencia a mainnet, mainnet-beta o APIs de mainnet:
+          el proyecto corre SOLO en devnet durante la hackathon.
+        - No exigir tests formales: es un hackathon, priorizar que la demo funcione.
+    - path: 'apps/web/**/*'
+      instructions: |
+        - React 18 + Vite + TypeScript: hooks correctos, tipos sin `any` innecesario.
+        - La conexión de wallet (Phantom) debe apuntar a devnet y mostrar destino,
+          monto, token y red antes de firmar.
+    - path: 'apps/api/**/*'
+      instructions: |
+        - Fastify + Prisma + SQLite: validar inputs en los endpoints, no loggear datos sensibles.
+        - Toda transacción que se arme en el backend debe viajar firmada por el multisig (Squads),
+          nunca con claves en el servidor.
+    - path: 'packages/shared/**/*'
+      instructions: |
+        - Los tipos y contratos de acá consumen web y api a la vez: marcar cualquier
+          cambio que rompa compatibilidad (campos renombrados, endpoints cambiados).
+    - path: 'programa/**/*'
+      instructions: |
+        - Programa Solana: devnet únicamente. Marcar seeds sin validar, cuentas sin
+          restricción de autoridad, y cualquier clave hardcodeada.
+  abort_on_close: true
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    ignore_title_keywords: []
+    labels: []
+    drafts: false
+    base_branches:
+      - main
+  tools:
+    gitleaks:
+      enabled: true
+    eslint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: auto
+  issues:
+    scope: local
+  pull_requests:
+    scope: local
