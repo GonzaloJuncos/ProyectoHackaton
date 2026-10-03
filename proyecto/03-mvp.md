@@ -12,6 +12,8 @@
 
 Narrativa: *"Una empresa argentina aprueba y paga a su proveedor del exterior en 30 segundos, con evidencia auditable."*
 
+**La demo gira alrededor de 2 momentos vitrina**: el **agente** mostrando su verificación en pantalla (checklist → decisión → ligada al tx) y la **tx verificable en Explorer** con el hash de la factura. Todo lo demás del flujo es soporte para esos dos momentos.
+
 ## Entra (MVP)
 
 - Login con roles (administrador, jefe, supervisor, empleado) + wallet embebida para firmar (Privy o similar — el usuario no instala nada).
