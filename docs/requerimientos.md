@@ -26,17 +26,18 @@
 | RF-03 | Alta y gestión de proveedores: datos de contacto/fiscales y wallet destino | MVP |
 | RF-04 | Carga de facturas de forma manual y por CSV; referencia a orden de compra | MVP |
 | RF-05 | Flujo de aprobación con **multisig 2/3 on-chain usando Squads** (SDK de Squads, ya auditado y deployado): el pago solo se ejecuta cuando 2 de 3 responsables firman (aprobadores: jefe, supervisor y administrador; el empleado carga pero no aprueba) | MVP |
-| RF-06 | Ejecución del pago **exclusivamente en USDC**, con **hash de factura embebido** en la transacción (memo / Token-2022) | MVP |
-| RF-07 | Dashboard de conciliación: cada factura vinculada a su pago y su tx on-chain | MVP |
-| RF-08 | Historial auditable: consulta de transacciones y su evidencia | MVP |
-| RF-09 | Soporte para proveedores locales y del exterior (la demo enfatiza cross-border) | MVP |
-| RF-10 | Transparencia de cobro: el proveedor ve claramente que **cobra en USDC** y gestiona su propia salida a fiat (off-ramp a cargo del proveedor) | MVP |
-| RF-11 | Integración con bancos, contadores y ERP reales | Futuro |
-| RF-12 | Off-ramp a fiat gestionado por la plataforma | Futuro |
-| RF-13 | Escrow / liberación de pago al confirmar recepción de mercadería | Futuro |
-| RF-14 | Descuento por pronto pago (dynamic discounting desde vault on-chain) | Futuro |
-| RF-15 | Pagos iniciados por agentes de IA (x402) | Futuro |
-| RF-16 | Programa propio en la red (registro de facturas/aprobaciones on-chain), si se busca más novelty | Futuro |
+| RF-06 | **Agente de pagos**: componente automático que, una vez obtenidas las 2/3 aprobaciones, **verifica que la factura sea correcta** (coincide con orden de compra, proveedor registrado, monto dentro de lo esperado, sin duplicados) y **solo en ese caso ejecuta el pago**. Si la factura no pasa la verificación, la marca y avisa; no paga | MVP |
+| RF-07 | Ejecución del pago **exclusivamente en USDC**, con **hash de factura embebido** en la transacción (memo / Token-2022) | MVP |
+| RF-08 | Dashboard de conciliación: cada factura vinculada a su pago y su tx on-chain | MVP |
+| RF-09 | Historial auditable: consulta de transacciones y su evidencia, incluyendo el resultado de la verificación del agente | MVP |
+| RF-10 | Soporte para proveedores locales y del exterior (la demo enfatiza cross-border) | MVP |
+| RF-11 | Transparencia de cobro: el proveedor ve claramente que **cobra en USDC** y gestiona su propia salida a fiat (off-ramp a cargo del proveedor) | MVP |
+| RF-12 | Integración con bancos, contadores y ERP reales | Futuro |
+| RF-13 | Off-ramp a fiat gestionado por la plataforma | Futuro |
+| RF-14 | Escrow / liberación de pago al confirmar recepción de mercadería | Futuro |
+| RF-15 | Descuento por pronto pago (dynamic discounting desde vault on-chain) | Futuro |
+| RF-16 | Pagos entre agentes de IA (x402) | Futuro |
+| RF-17 | Programa propio en la red (registro de facturas/aprobaciones on-chain), si se busca más novelty | Futuro |
 
 ### Roles internos
 
@@ -53,7 +54,7 @@
 |---|---|
 | RNF-01 | **Solo devnet** (red de prueba de Solana; la plata es de mentira y sale de un faucet). Jamás mainnet ni plata real |
 | RNF-02 | Sin custodia de claves: la frase semilla y las claves privadas nunca van al chat ni al repo |
-| RNF-03 | Toda transacción requiere aprobación manual del usuario, mostrando antes destino, monto, token y red |
+| RNF-03 | Toda firma requiere aprobación manual del usuario, mostrando antes destino, monto, token y red. El agente de pagos (RF-06) **no puede saltearse las firmas humanas del multisig**: solo ejecuta pagos ya aprobados y con factura verificada |
 | RNF-04 | Código open source con repositorio público (requisito de la competencia) |
 | RNF-05 | La demo completa corre en ~3 minutos: un solo caso de uso de punta a punta |
 | RNF-06 | URL pública accesible para los jurados (vale más que un link a GitHub) |
@@ -72,4 +73,5 @@ La normativa argentina vigente sobre uso de cripto/blockchain se menciona como *
 - Autenticación: usuario/contraseña + roles internos; la wallet se usa solo para firmar aprobaciones y pagos.
 - Moneda: exclusivamente **USDC**.
 - Off-ramp: a cargo del proveedor, comunicado con transparencia (RF-10).
-- Multisig 2/3: se implementa con **Squads** (programa existente, auditado). Programa propio queda como opción futura (RF-16).
+- Multisig 2/3: se implementa con **Squads** (programa existente, auditado). Programa propio queda como opción futura (RF-17).
+- Ejecución: un **agente automático** paga solo si la factura es correcta y ya tiene las 2/3 aprobaciones (RF-06); nunca paga por cuenta propia ni saltea firmas humanas.
