@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { PrismaClient } from "@prisma/client";
+import { createHash } from "node:crypto";
 import { hashPassword, verifyPassword, crearSesion, requireAuth, requireRoles } from "./auth.js";
 
 const prisma = new PrismaClient();
@@ -143,13 +144,47 @@ app.delete("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
   return prisma.proveedor.update({ where: { id }, data: { activo: false } });
 });
 
+// ---------- Órdenes de compra ----------
+
+app.get("/api/ordenes-compra", { preHandler: auth }, async (req) => {
+  return prisma.ordenCompra.findMany({
+    where: { empresaId: req.usuario!.empresaId },
+    include: { proveedor: { select: { nombre: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+});
+
+app.post("/api/ordenes-compra", { preHandler: auth }, async (req, reply) => {
+  const { proveedorId, numero, monto } = (req.body ?? {}) as {
+    proveedorId?: string; numero?: string; monto?: number;
+  };
+  if (!proveedorId || !numero || !monto) {
+    return reply.code(400).send({ error: "faltan campos: proveedorId, numero, monto" });
+  }
+  const proveedor = await prisma.proveedor.findFirst({
+    where: { id: proveedorId, empresaId: req.usuario!.empresaId, activo: true },
+  });
+  if (!proveedor) return reply.code(404).send({ error: "proveedor no encontrado o inactivo" });
+  const oc = await prisma.ordenCompra.create({
+    data: { empresaId: req.usuario!.empresaId, proveedorId, numero, monto },
+  });
+  return reply.code(201).send(oc);
+});
+
 // ---------- Facturas (RF-04) ----------
+
+// Hash del contenido de la factura: identidad que viaja on-chain en el memo del pago.
+const hashFactura = (f: { empresaId: string; proveedorId: string; numero: string; monto: number }) =>
+  createHash("sha256")
+    .update(`${f.empresaId}|${f.proveedorId}|${f.numero}|${f.monto}`)
+    .digest("hex");
 
 app.get("/api/facturas", { preHandler: auth }, async (req) => {
   const facturas = await prisma.factura.findMany({
     where: { empresaId: req.usuario!.empresaId },
     include: {
       proveedor: { select: { nombre: true } },
+      ordenCompra: { select: { numero: true } },
       propuesta: { include: { firmas: true } },
       pago: true,
     },
@@ -158,6 +193,7 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
   return facturas.map((f) => ({
     ...f,
     proveedorNombre: f.proveedor.nombre,
+    ocNumero: f.ordenCompra?.numero ?? null,
     firmasCount: f.propuesta?.firmas.length ?? 0,
   }));
 });
@@ -165,23 +201,110 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
 app.post("/api/facturas", { preHandler: auth }, async (req, reply) => {
   const body = (req.body ?? {}) as {
     proveedorId?: string; ordenCompraId?: string; numero?: string;
-    monto?: number; hashSha256?: string; origen?: string;
+    monto?: number; origen?: string;
   };
-  if (!body.proveedorId || !body.numero || !body.monto || !body.hashSha256) {
-    return reply.code(400).send({ error: "faltan campos: proveedorId, numero, monto, hashSha256" });
+  if (!body.proveedorId || !body.numero || !body.monto) {
+    return reply.code(400).send({ error: "faltan campos: proveedorId, numero, monto" });
   }
+  const empresaId = req.usuario!.empresaId;
   const proveedor = await prisma.proveedor.findFirst({
-    where: { id: body.proveedorId, empresaId: req.usuario!.empresaId, activo: true },
+    where: { id: body.proveedorId, empresaId, activo: true },
   });
   if (!proveedor) return reply.code(404).send({ error: "proveedor no encontrado o inactivo" });
+  if (body.ordenCompraId) {
+    const oc = await prisma.ordenCompra.findFirst({
+      where: { id: body.ordenCompraId, empresaId, proveedorId: body.proveedorId },
+    });
+    if (!oc) return reply.code(404).send({ error: "orden de compra no encontrada para ese proveedor" });
+  }
+
+  const duplicada = await prisma.factura.findFirst({
+    where: { empresaId, proveedorId: body.proveedorId, numero: body.numero },
+  });
+  if (duplicada) return reply.code(409).send({ error: "factura duplicada: ese número ya existe para el proveedor" });
 
   const factura = await prisma.factura.create({
-    data: { ...body, empresaId: req.usuario!.empresaId, cargadaPorId: req.usuario!.id },
+    data: {
+      empresaId,
+      proveedorId: body.proveedorId,
+      ordenCompraId: body.ordenCompraId,
+      numero: body.numero,
+      monto: body.monto,
+      hashSha256: hashFactura({ empresaId, proveedorId: body.proveedorId, numero: body.numero, monto: body.monto }),
+      origen: body.origen ?? "MANUAL",
+      cargadaPorId: req.usuario!.id,
+    },
   });
   await prisma.auditLog.create({
-    data: { empresaId: req.usuario!.empresaId, entidad: "factura", entidadId: factura.id, accion: "cargada", actorId: req.usuario!.id },
+    data: { empresaId, entidad: "factura", entidadId: factura.id, accion: "cargada", actorId: req.usuario!.id },
   });
   return reply.code(201).send(factura);
+});
+
+// Importación CSV: filas ya parseadas por el cliente (numero, proveedor, monto, ocNumero?).
+app.post("/api/facturas/lote", { preHandler: auth }, async (req, reply) => {
+  const { filas } = (req.body ?? {}) as {
+    filas?: { numero?: string; proveedor?: string; monto?: number; ocNumero?: string }[];
+  };
+  if (!Array.isArray(filas) || filas.length === 0) {
+    return reply.code(400).send({ error: "se esperaba { filas: [...] }" });
+  }
+  const empresaId = req.usuario!.empresaId;
+  const errores: { fila: number; numero: string; motivo: string }[] = [];
+  let creadas = 0;
+
+  for (const [i, fila] of filas.entries()) {
+    const nro = String(fila.numero ?? "").trim();
+    const provNombre = String(fila.proveedor ?? "").trim();
+    const monto = Number(fila.monto);
+    const filaN = i + 1;
+    if (!nro || !provNombre || !monto || monto <= 0) {
+      errores.push({ fila: filaN, numero: nro || "—", motivo: "faltan datos o monto inválido" });
+      continue;
+    }
+    const proveedor = await prisma.proveedor.findFirst({
+      where: { empresaId, nombre: provNombre, activo: true },
+    });
+    if (!proveedor) {
+      errores.push({ fila: filaN, numero: nro, motivo: `proveedor "${provNombre}" no existe` });
+      continue;
+    }
+    const duplicada = await prisma.factura.findFirst({
+      where: { empresaId, proveedorId: proveedor.id, numero: nro },
+    });
+    if (duplicada) {
+      errores.push({ fila: filaN, numero: nro, motivo: "duplicada" });
+      continue;
+    }
+    let ordenCompraId: string | undefined;
+    if (fila.ocNumero) {
+      const oc = await prisma.ordenCompra.findFirst({
+        where: { empresaId, proveedorId: proveedor.id, numero: String(fila.ocNumero).trim() },
+      });
+      if (!oc) {
+        errores.push({ fila: filaN, numero: nro, motivo: `OC "${fila.ocNumero}" no encontrada` });
+        continue;
+      }
+      ordenCompraId = oc.id;
+    }
+    const factura = await prisma.factura.create({
+      data: {
+        empresaId,
+        proveedorId: proveedor.id,
+        ordenCompraId,
+        numero: nro,
+        monto,
+        hashSha256: hashFactura({ empresaId, proveedorId: proveedor.id, numero: nro, monto }),
+        origen: "CSV",
+        cargadaPorId: req.usuario!.id,
+      },
+    });
+    await prisma.auditLog.create({
+      data: { empresaId, entidad: "factura", entidadId: factura.id, accion: "cargada", actorId: req.usuario!.id },
+    });
+    creadas++;
+  }
+  return { creadas, errores };
 });
 
 // ---------- Conciliación (RF-08) ----------

@@ -151,15 +151,38 @@ export type CrearProveedorBody = Omit<Proveedor, "id" | "empresaId" | "activo">;
 // PATCH /api/proveedores/:id
 export type ActualizarProveedorBody = Partial<CrearProveedorBody & { activo: boolean }>;
 
-// POST /api/facturas
+// POST /api/facturas — hashSha256 lo calcula el servidor; cargadaPorId sale de la sesión
 export interface CrearFacturaBody {
   proveedorId: string;
   ordenCompraId?: string;
   numero: string;
   monto: number;
-  hashSha256: string;
-  cargadaPorId: string;
   origen?: "MANUAL" | "CSV";
+}
+
+// POST /api/facturas/lote — importación CSV (RF-04)
+// Formato CSV: numero,proveedor,monto[,oc_numero]  (proveedor = nombre exacto)
+export interface FilaFacturaCsv {
+  numero: string;
+  proveedor: string;
+  monto: number;
+  ocNumero?: string;
+}
+
+export interface LoteFacturasBody {
+  filas: FilaFacturaCsv[];
+}
+
+export interface LoteFacturasResultado {
+  creadas: number;
+  errores: { fila: number; numero: string; motivo: string }[];
+}
+
+// POST /api/ordenes-compra
+export interface CrearOrdenCompraBody {
+  proveedorId: string;
+  numero: string;
+  monto: number;
 }
 
 // GET /api/facturas -> FacturaConEstado[]

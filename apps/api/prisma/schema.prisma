@@ -103,6 +103,7 @@ model Factura {
   verificaciones Verificacion[]
   pago          Pago?
 
+  @@unique([empresaId, proveedorId, numero]) // anti-duplicados (alimenta check sinDuplicados del agente)
   @@map("facturas")
 }
 

@@ -15,12 +15,24 @@ button:hover { background: #388bfd; }
 button:disabled { opacity: 0.6; cursor: default; }
 button.link { background: none; color: #58a6ff; padding: 0; text-decoration: underline; }
 
-input {
+input, select {
   width: 100%; background: #0d1117; color: #e6edf3;
   border: 1px solid #30363d; border-radius: 6px; padding: 0.5rem 0.7rem;
   font: inherit; margin-top: 0.3rem;
 }
-input:focus { border-color: #1f6feb; outline: none; }
+input:focus, select:focus { border-color: #1f6feb; outline: none; }
+select:disabled { opacity: 0.5; }
+
+button.secundario { background: #21262d; }
+button.secundario:hover { background: #30363d; }
+.acciones { display: flex; gap: 0.6rem; }
+
+.estado { font-size: 0.78rem; padding: 0.15rem 0.55rem; border-radius: 999px; background: #21262d; color: #9198a1; }
+.estado-cargada { background: #1f6feb33; color: #58a6ff; }
+.estado-en_aprobacion { background: #d2992233; color: #d29922; }
+.estado-aprobada { background: #3fb95033; color: #3fb950; }
+.estado-pagada { background: #3fb95033; color: #3fb950; }
+.estado-rechazada, .estado-verificacion_fallida { background: #f8514933; color: #ff7b72; }
 
 label { display: block; font-size: 0.85rem; color: #9198a1; margin-bottom: 0.8rem; }
 
