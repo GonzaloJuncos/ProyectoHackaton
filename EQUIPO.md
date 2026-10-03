@@ -27,7 +27,7 @@ La entrega tiene que tener, como piso:
 
 1. **Wallet** — un usuario real que conecta su wallet (Phantom en devnet) y necesita hacer una transacción. Vive en `apps/web` (Luli).
 2. **Blockchain** — esa transacción viaja de verdad por la red de Solana en devnet, no es una simulación. Si el producto andaría igual con una planilla compartida, falta la parte onchain.
-3. **Programa que corre en la red** — un programa propio desplegado en devnet con el que la transacción interactúa. Vive en `programa/` (Matías + Maxi) y se consume desde `apps/api` / `apps/web`.
+3. **Programa que corre en la red** — la transacción interactúa con un programa desplegado en devnet. En el MVP es **Squads** (multisig existente, consumido desde `apps/api`/`apps/web`); un programa propio queda como opción futura en `programa/` (Matías + Maxi).
 
 Criterio de chequeo: la demo debe mostrar a un usuario firmando una transacción real en devnet que toca nuestro programa. Eso es lo que los jurados miran primero ("si puede existir sin cadena, lo notan").
 

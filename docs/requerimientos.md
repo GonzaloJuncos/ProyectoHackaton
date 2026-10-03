@@ -25,7 +25,7 @@
 | RF-02 | Conexión de wallet (Phantom) en **devnet** para las cuentas que firman aprobaciones | MVP |
 | RF-03 | Alta y gestión de proveedores: datos de contacto/fiscales y wallet destino | MVP |
 | RF-04 | Carga de facturas de forma manual y por CSV; referencia a orden de compra | MVP |
-| RF-05 | Flujo de aprobación con **multisig 2/3 on-chain**: el pago solo se ejecuta cuando 2 de 3 responsables firman (aprobadores: jefe, supervisor y administrador; el empleado carga pero no aprueba) | MVP |
+| RF-05 | Flujo de aprobación con **multisig 2/3 on-chain usando Squads** (SDK de Squads, ya auditado y deployado): el pago solo se ejecuta cuando 2 de 3 responsables firman (aprobadores: jefe, supervisor y administrador; el empleado carga pero no aprueba) | MVP |
 | RF-06 | Ejecución del pago **exclusivamente en USDC**, con **hash de factura embebido** en la transacción (memo / Token-2022) | MVP |
 | RF-07 | Dashboard de conciliación: cada factura vinculada a su pago y su tx on-chain | MVP |
 | RF-08 | Historial auditable: consulta de transacciones y su evidencia | MVP |
@@ -36,6 +36,7 @@
 | RF-13 | Escrow / liberación de pago al confirmar recepción de mercadería | Futuro |
 | RF-14 | Descuento por pronto pago (dynamic discounting desde vault on-chain) | Futuro |
 | RF-15 | Pagos iniciados por agentes de IA (x402) | Futuro |
+| RF-16 | Programa propio en la red (registro de facturas/aprobaciones on-chain), si se busca más novelty | Futuro |
 
 ### Roles internos
 
@@ -71,4 +72,4 @@ La normativa argentina vigente sobre uso de cripto/blockchain se menciona como *
 - Autenticación: usuario/contraseña + roles internos; la wallet se usa solo para firmar aprobaciones y pagos.
 - Moneda: exclusivamente **USDC**.
 - Off-ramp: a cargo del proveedor, comunicado con transparencia (RF-10).
-- Implementación del multisig 2/3: **pendiente** — opciones Squads vs. programa propio, en discusión (ver `proyecto/`).
+- Multisig 2/3: se implementa con **Squads** (programa existente, auditado). Programa propio queda como opción futura (RF-16).
