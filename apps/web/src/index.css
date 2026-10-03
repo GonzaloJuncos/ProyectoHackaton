@@ -38,6 +38,10 @@ button.secundario:hover { background: #30363d; }
 a.link { color: #58a6ff; }
 .aviso-multisig { display: flex; align-items: center; gap: 0.8rem; margin-top: 1rem; max-width: none; }
 
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.8rem; margin: 1rem 0 1.5rem; }
+.card.stat { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; }
+.card.stat strong { font-size: 1.6rem; }
+
 label { display: block; font-size: 0.85rem; color: #9198a1; margin-bottom: 0.8rem; }
 
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }

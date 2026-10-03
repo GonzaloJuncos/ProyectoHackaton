@@ -552,21 +552,37 @@ app.post("/api/facturas/:id/ejecutar-confirmar", { preHandler: soloFirmantes }, 
 // ---------- Conciliación (RF-08) ----------
 
 app.get("/api/conciliacion", { preHandler: auth }, async (req) => {
-  return prisma.pago.findMany({
-    where: { factura: { empresaId: req.usuario!.empresaId } },
-    include: { factura: { include: { proveedor: { select: { nombre: true, pais: true } } } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const empresaId = req.usuario!.empresaId;
+  const [facturas, pagos] = await Promise.all([
+    prisma.factura.groupBy({ by: ["estado"], where: { empresaId }, _count: true }),
+    prisma.pago.findMany({
+      where: { factura: { empresaId } },
+      include: { factura: { include: { proveedor: { select: { nombre: true, pais: true } } } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  const conteo = Object.fromEntries(facturas.map((f) => [f.estado, f._count]));
+  const resumen = {
+    totalFacturas: facturas.reduce((a, f) => a + f._count, 0),
+    enAprobacion: (conteo.EN_APROBACION ?? 0) + (conteo.CARGADA ?? 0),
+    aprobadas: conteo.APROBADA ?? 0,
+    pagadas: conteo.PAGADA ?? 0,
+    conProblemas: (conteo.RECHAZADA ?? 0) + (conteo.VERIFICACION_FALLIDA ?? 0),
+    totalPagadoUsdc: pagos.reduce((a, p) => a + p.montoUsdc, 0),
+  };
+  return { resumen, pagos };
 });
 
 // ---------- Auditoría (RF-09) ----------
 
 app.get("/api/audit-log", { preHandler: auth }, async (req) => {
-  return prisma.auditLog.findMany({
+  const logs = await prisma.auditLog.findMany({
     where: { empresaId: req.usuario!.empresaId },
+    include: { actor: { select: { nombre: true, rol: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
+  return logs;
 });
 
 const port = Number(process.env.PORT ?? 3001);

@@ -6,6 +6,8 @@ import WalletButton from "./components/WalletButton";
 import Login from "./pages/Login";
 import Proveedores from "./pages/Proveedores";
 import Facturas from "./pages/Facturas";
+import Panel from "./pages/Panel";
+import Historial from "./pages/Historial";
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { usuario, logout } = useAuth();
@@ -14,8 +16,10 @@ function Layout({ children }: { children: React.ReactNode }) {
       <nav className="topnav">
         <Link to="/" className="brand">Logis</Link>
         <div className="nav-links">
+          <Link to="/">Conciliación</Link>
           <Link to="/facturas">Facturas</Link>
           <Link to="/proveedores">Proveedores</Link>
+          <Link to="/historial">Historial</Link>
         </div>
         <div className="nav-user">
           <WalletButton client={client} />
@@ -42,9 +46,11 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Protegido><Panel /></Protegido>} />
             <Route path="/proveedores" element={<Protegido><Proveedores /></Protegido>} />
             <Route path="/facturas" element={<Protegido><Facturas /></Protegido>} />
-            <Route path="*" element={<Navigate to="/facturas" replace />} />
+            <Route path="/historial" element={<Protegido><Historial /></Protegido>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
