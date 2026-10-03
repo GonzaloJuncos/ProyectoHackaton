@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace apps/web",
+    "dev:web-ui": "npm run dev --workspace apps/web-ui",
     "dev:api": "npm run dev --workspace apps/api",
     "build": "npm run build --workspaces --if-present",
     "db:push": "npm run db:push --workspace apps/api",
