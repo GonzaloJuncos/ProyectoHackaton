@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || pathname === "/portal-proveedor") return <>{children}</>;
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
