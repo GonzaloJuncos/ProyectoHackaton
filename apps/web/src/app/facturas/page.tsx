@@ -50,7 +50,7 @@ export default function Facturas() {
             <tr key={f.id} className="border-b last:border-0">
               <td className="p-3 font-mono text-xs">{f.numeroOC}</td>
               <td className="p-3">{nombreProveedor(f.proveedorId)}</td>
-              <td className="p-3">{f.montoUSDC.toLocaleString()} USDC</td>
+              <td className="p-3">{f.montoUSDC.toLocaleString("es-AR")} USDC</td>
               <td className="p-3">
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[f.estado]}`}>
                   {f.estado}

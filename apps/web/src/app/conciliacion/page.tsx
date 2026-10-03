@@ -22,7 +22,7 @@ export default function Conciliacion() {
             <tr key={f.id} className="border-b last:border-0">
               <td className="p-3 font-mono text-xs">{f.numeroOC}</td>
               <td className="p-3">{nombreProveedor(f.proveedorId)}</td>
-              <td className="p-3">{f.montoUSDC.toLocaleString()} USDC</td>
+              <td className="p-3">{f.montoUSDC.toLocaleString("es-AR")} USDC</td>
               <td className="p-3">
                 <a
                   href={`https://explorer.solana.com/tx/${f.txHash}?cluster=devnet`}
