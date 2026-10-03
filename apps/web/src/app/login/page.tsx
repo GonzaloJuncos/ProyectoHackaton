@@ -30,34 +30,34 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-fondo">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <span className="text-3xl font-bold">Logis</span>
+          <span className="text-3xl font-bold text-tinta">Logis</span>
         </div>
 
         {!tipo && (
           <>
-            <h1 className="mb-2 text-xl font-bold">Ingresar</h1>
-            <p className="mb-6 text-sm text-gray-600">
+            <h1 className="mb-2 text-xl font-bold text-tinta">Bienvenido de nuevo</h1>
+            <p className="mb-6 text-sm text-tinta/60">
               Pagos a proveedores en USDC con aprobación multisig y evidencia auditable.
             </p>
             <div className="space-y-3">
               <button
                 onClick={() => setTipo("empresa")}
-                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-emerald-400 hover:shadow"
+                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
               >
-                <span className="block font-semibold">Cuenta empresa</span>
-                <span className="block text-sm text-gray-500">
+                <span className="block font-semibold text-tinta">Cuenta empresa</span>
+                <span className="block text-sm text-tinta/50">
                   Pagás a tus proveedores. Aprobaciones, facturas y conciliación.
                 </span>
               </button>
               <button
                 onClick={() => setTipo("personal")}
-                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-emerald-400 hover:shadow"
+                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
               >
-                <span className="block font-semibold">Cuenta personal / proveedor</span>
-                <span className="block text-sm text-gray-500">
+                <span className="block font-semibold text-tinta">Cuenta personal / proveedor</span>
+                <span className="block text-sm text-tinta/50">
                   Cobrás en USDC. Ves tus pagos y su comprobante on-chain.
                 </span>
               </button>
@@ -67,8 +67,8 @@ export default function Login() {
 
         {tipo === "empresa" && (
           <>
-            <h1 className="mb-2 text-xl font-bold">Cuenta empresa</h1>
-            <p className="mb-6 text-sm text-gray-600">
+            <h1 className="mb-2 text-xl font-bold text-tinta">Cuenta empresa</h1>
+            <p className="mb-6 text-sm text-tinta/60">
               Elegí tu rol dentro de la empresa. <em>Modo demo.</em>
             </p>
             <div className="space-y-3">
@@ -76,10 +76,10 @@ export default function Login() {
                 <button
                   key={rol}
                   onClick={() => entrarEmpresa(rol)}
-                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-emerald-400 hover:shadow"
+                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
                 >
-                  <span className="block font-semibold capitalize">{rol}</span>
-                  <span className="block text-sm text-gray-500">{descripcion}</span>
+                  <span className="block font-semibold capitalize text-tinta">{rol}</span>
+                  <span className="block text-sm text-tinta/50">{descripcion}</span>
                 </button>
               ))}
             </div>
@@ -88,8 +88,8 @@ export default function Login() {
 
         {tipo === "personal" && (
           <>
-            <h1 className="mb-2 text-xl font-bold">Cuenta personal / proveedor</h1>
-            <p className="mb-6 text-sm text-gray-600">
+            <h1 className="mb-2 text-xl font-bold text-tinta">Cuenta personal / proveedor</h1>
+            <p className="mb-6 text-sm text-tinta/60">
               Elegí con qué proveedor entrar. <em>Modo demo.</em>
             </p>
             <div className="space-y-3">
@@ -97,10 +97,10 @@ export default function Login() {
                 <button
                   key={p.id}
                   onClick={() => entrarProveedor(p.id)}
-                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-emerald-400 hover:shadow"
+                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
                 >
-                  <span className="block font-semibold">{p.nombre}</span>
-                  <span className="block text-sm text-gray-500">{p.pais} · {p.wallet}</span>
+                  <span className="block font-semibold text-tinta">{p.nombre}</span>
+                  <span className="block text-sm text-tinta/50">{p.pais} · {p.wallet}</span>
                 </button>
               ))}
             </div>
@@ -110,12 +110,12 @@ export default function Login() {
         {tipo && (
           <button
             onClick={() => setTipo(null)}
-            className="mt-4 w-full text-center text-sm text-gray-500 hover:underline"
+            className="mt-4 w-full text-center text-sm text-petroleo hover:underline"
           >
             ← Volver
           </button>
         )}
-        <p className="mt-6 text-center text-xs text-gray-400">
+        <p className="mt-6 text-center text-xs text-tinta/40">
           Red de prueba (devnet) — la plata es de mentira.
         </p>
       </div>

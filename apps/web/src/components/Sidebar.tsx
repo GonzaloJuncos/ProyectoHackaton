@@ -24,7 +24,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r bg-white">
       <div className="flex items-center gap-2 px-5 py-4">
-        <svg className="h-7 w-7 text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="h-7 w-7 text-petroleo" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2zm0 2.3L6 7.4v7.2l6 3.1 6-3.1V7.4l-6-3.1z" />
         </svg>
         <span className="text-lg font-bold">Logis</span>
@@ -37,7 +37,7 @@ export default function Sidebar() {
               key={href}
               href={href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                activo ? "bg-emerald-50 text-emerald-600" : "text-gray-600 hover:bg-gray-50"
+                activo ? "bg-petroleo/10 text-petroleo" : "text-tinta/70 hover:bg-fondo"
               }`}
             >
               {icon(d)}
@@ -46,10 +46,10 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div className="m-3 rounded-xl bg-gray-900 p-4 text-white">
-        <p className="text-xs text-gray-400">USDC en custodia</p>
+      <div className="m-3 rounded-xl bg-oscuro p-4 text-white">
+        <p className="text-xs text-white/50">USDC en custodia</p>
         <p className="mt-1 text-lg font-bold">${BILLETERA.balanceUSDC.toLocaleString("es-AR")} USDC</p>
-        <p className="mt-1 text-xs text-emerald-400">{BILLETERA.red}</p>
+        <p className="mt-1 text-xs text-menta">{BILLETERA.red}</p>
       </div>
     </aside>
   );

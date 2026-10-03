@@ -8,7 +8,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/login" || pathname === "/portal-proveedor") return <>{children}</>;
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-fondo">
       <Sidebar />
       <div className="pl-56">
         <Header />

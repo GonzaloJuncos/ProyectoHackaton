@@ -27,13 +27,13 @@ export default function Proveedores() {
           <input className="rounded border px-3 py-2" placeholder="País" value={pais} onChange={(e) => setPais(e.target.value)} />
           <input className="rounded border px-3 py-2" placeholder="Wallet USDC (destino)" value={wallet} onChange={(e) => setWallet(e.target.value)} />
         </div>
-        <button onClick={agregar} className="mt-3 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <button onClick={agregar} className="mt-3 rounded bg-petroleo px-4 py-2 text-sm font-medium text-white hover:bg-tinta">
           Agregar
         </button>
       </div>
 
       <table className="w-full rounded-lg border bg-white text-sm shadow-sm">
-        <thead className="border-b bg-gray-50 text-left">
+        <thead className="border-b bg-fondo text-left">
           <tr><th className="p-3">Nombre</th><th className="p-3">País</th><th className="p-3">Wallet</th></tr>
         </thead>
         <tbody>

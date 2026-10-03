@@ -7,10 +7,10 @@ import { Factura, Rol } from "@/lib/types";
 const ROLES_APROBADORES: Rol[] = ["jefe", "supervisor", "administrador"];
 
 const ESTILO_ESTADO: Record<Factura["estado"], string> = {
-  pendiente: "bg-yellow-100 text-yellow-800",
-  aprobada: "bg-blue-100 text-blue-800",
-  pagada: "bg-green-100 text-green-800",
-  rechazada: "bg-red-100 text-red-800",
+  pendiente: "bg-amber-100 text-amber-700",
+  aprobada: "bg-petroleo/15 text-petroleo",
+  pagada: "bg-menta/20 text-petroleo",
+  rechazada: "bg-red-100 text-red-700",
 };
 
 export default function Facturas() {
@@ -39,7 +39,7 @@ export default function Facturas() {
     <div>
       <h1 className="mb-6 text-2xl font-bold">Facturas</h1>
       <table className="w-full rounded-lg border bg-white text-sm shadow-sm">
-        <thead className="border-b bg-gray-50 text-left">
+        <thead className="border-b bg-fondo text-left">
           <tr>
             <th className="p-3">OC</th><th className="p-3">Proveedor</th><th className="p-3">Monto</th>
             <th className="p-3">Estado</th><th className="p-3">Firmas</th><th className="p-3"></th>
@@ -61,7 +61,7 @@ export default function Facturas() {
                 {f.estado === "pendiente" && rol && ROLES_APROBADORES.includes(rol) && !f.firmas.includes(rol) && (
                   <button
                     onClick={() => aprobar(f.id)}
-                    className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                    className="rounded bg-petroleo px-3 py-1 text-xs font-medium text-white hover:bg-tinta"
                   >
                     Firmar
                   </button>
@@ -72,7 +72,7 @@ export default function Facturas() {
         </tbody>
       </table>
       {rol === "empleado" && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-tinta/60">
           Como empleado podés cargar facturas, pero no firmar aprobaciones.
         </p>
       )}
