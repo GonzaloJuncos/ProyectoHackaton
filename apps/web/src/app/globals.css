@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eef6f4;
-  --foreground: #0b2a33;
+  --bg: #eef6f4;
+  --surface: #ffffff;
+  --fg: #0b2a33;
+  --link: #0b5563;
+}
+
+[data-theme="dark"] {
+  --bg: #08262c;
+  --surface: #0b2a33;
+  --fg: #eef6f4;
+  --link: #3fd0a8;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-fondo: var(--bg);
+  --color-card: var(--surface);
+  --color-tinta: var(--fg);
+  --color-enlace: var(--link);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -17,13 +28,11 @@
   --color-petroleo: #0b5563;        /* botón principal, enlaces, isotipo superior */
   --color-petroleo-claro: #9fbec1;  /* isotipo sobre fondo oscuro */
   --color-menta: #3fd0a8;           /* foco, éxito — nunca texto sobre fondo claro */
-  --color-tinta: #0b2a33;           /* textos, logotipo */
-  --color-oscuro: #08262c;          /* paneles, modo oscuro */
-  --color-fondo: #eef6f4;           /* fondos, formularios */
+  --color-oscuro: #08262c;          /* paneles fijos */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
   font-family: Arial, Helvetica, sans-serif;
 }

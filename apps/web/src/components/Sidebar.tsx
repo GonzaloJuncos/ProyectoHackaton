@@ -22,9 +22,9 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r bg-white">
+    <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r bg-card">
       <div className="flex items-center gap-2 px-5 py-4">
-        <svg className="h-7 w-7 text-petroleo" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="h-7 w-7 text-enlace" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2zm0 2.3L6 7.4v7.2l6 3.1 6-3.1V7.4l-6-3.1z" />
         </svg>
         <span className="text-lg font-bold">Logis</span>
@@ -37,7 +37,7 @@ export default function Sidebar() {
               key={href}
               href={href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                activo ? "bg-petroleo/10 text-petroleo" : "text-tinta/70 hover:bg-fondo"
+                activo ? "bg-petroleo/10 text-enlace" : "text-tinta/70 hover:bg-fondo"
               }`}
             >
               {icon(d)}

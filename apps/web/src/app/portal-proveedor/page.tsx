@@ -22,10 +22,10 @@ export default function PortalProveedor() {
 
   return (
     <div className="min-h-screen bg-fondo">
-      <header className="border-b bg-white">
+      <header className="border-b bg-card">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <span className="text-lg font-bold text-tinta">Logis <span className="text-sm font-normal text-tinta/50">· Portal de proveedor</span></span>
-          <a href="/login" className="text-sm text-petroleo hover:underline">Salir</a>
+          <a href="/login" className="text-sm text-enlace hover:underline">Salir</a>
         </div>
       </header>
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -39,7 +39,7 @@ export default function PortalProveedor() {
         </div>
 
         {facturasPendientes.length > 0 && (
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-card p-5 shadow-sm">
             <h2 className="mb-3 font-semibold text-tinta">Facturas en curso</h2>
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-tinta/40">
@@ -52,7 +52,7 @@ export default function PortalProveedor() {
                     <td className="py-2">{f.descripcion}</td>
                     <td className="py-2">{f.montoUSDC.toLocaleString("es-AR")} USDC</td>
                     <td className="py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.estado === "aprobada" ? "bg-petroleo/15 text-petroleo" : "bg-amber-100 text-amber-700"}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${f.estado === "aprobada" ? "bg-petroleo/15 text-enlace" : "bg-amber-100 text-amber-700"}`}>
                         {f.estado}
                       </span>
                     </td>
@@ -63,7 +63,7 @@ export default function PortalProveedor() {
           </section>
         )}
 
-        <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <section className="rounded-xl border bg-card p-5 shadow-sm">
           <h2 className="mb-3 font-semibold text-tinta">Pagos recibidos</h2>
           {cobros.length === 0 ? (
             <p className="text-sm text-tinta/60">Todavía no recibiste pagos.</p>
@@ -78,7 +78,7 @@ export default function PortalProveedor() {
                     <td className="py-2 text-xs text-tinta/60">{t.fecha}</td>
                     <td className="py-2 font-medium">{t.montoUSDC.toLocaleString("es-AR")} USDC</td>
                     <td className="py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${t.estado === "completada" ? "bg-menta/20 text-petroleo" : "bg-amber-100 text-amber-700"}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${t.estado === "completada" ? "bg-menta/20 text-enlace" : "bg-amber-100 text-amber-700"}`}>
                         {t.estado === "completada" ? "Completado" : "En proceso"}
                       </span>
                     </td>
@@ -87,7 +87,7 @@ export default function PortalProveedor() {
                         href={`https://explorer.solana.com/tx/${t.txHash}?cluster=devnet`}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-mono text-xs text-petroleo hover:underline"
+                        className="font-mono text-xs text-enlace hover:underline"
                       >
                         {t.txHash.slice(0, 12)}…
                       </a>

@@ -13,7 +13,7 @@ export default function Conciliacion() {
       <p className="mb-6 text-sm text-tinta/60">
         Cada factura vinculada a su pago on-chain. El hash de la factura viaja en el memo de la transacción.
       </p>
-      <table className="w-full rounded-lg border bg-white text-sm shadow-sm">
+      <table className="w-full rounded-lg border bg-card text-sm shadow-sm">
         <thead className="border-b bg-fondo text-left">
           <tr><th className="p-3">Factura / OC</th><th className="p-3">Proveedor</th><th className="p-3">Monto</th><th className="p-3">Tx on-chain</th></tr>
         </thead>
@@ -28,7 +28,7 @@ export default function Conciliacion() {
                   href={`https://explorer.solana.com/tx/${f.txHash}?cluster=devnet`}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-xs text-petroleo hover:underline"
+                  className="font-mono text-xs text-enlace hover:underline"
                 >
                   {f.txHash}
                 </a>

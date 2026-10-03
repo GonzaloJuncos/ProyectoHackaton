@@ -8,8 +8,8 @@ const ROLES_APROBADORES: Rol[] = ["jefe", "supervisor", "administrador"];
 
 const ESTILO_ESTADO: Record<Factura["estado"], string> = {
   pendiente: "bg-amber-100 text-amber-700",
-  aprobada: "bg-petroleo/15 text-petroleo",
-  pagada: "bg-menta/20 text-petroleo",
+  aprobada: "bg-petroleo/15 text-enlace",
+  pagada: "bg-menta/20 text-enlace",
   rechazada: "bg-red-100 text-red-700",
 };
 
@@ -38,7 +38,7 @@ export default function Facturas() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold">Facturas</h1>
-      <table className="w-full rounded-lg border bg-white text-sm shadow-sm">
+      <table className="w-full rounded-lg border bg-card text-sm shadow-sm">
         <thead className="border-b bg-fondo text-left">
           <tr>
             <th className="p-3">OC</th><th className="p-3">Proveedor</th><th className="p-3">Monto</th>
@@ -61,7 +61,7 @@ export default function Facturas() {
                 {f.estado === "pendiente" && rol && ROLES_APROBADORES.includes(rol) && !f.firmas.includes(rol) && (
                   <button
                     onClick={() => aprobar(f.id)}
-                    className="rounded bg-petroleo px-3 py-1 text-xs font-medium text-white hover:bg-tinta"
+                    className="rounded bg-petroleo px-3 py-1 text-xs font-medium text-white hover:brightness-110"
                   >
                     Firmar
                   </button>

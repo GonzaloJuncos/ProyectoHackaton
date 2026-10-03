@@ -20,19 +20,19 @@ export default function Proveedores() {
     <div>
       <h1 className="mb-6 text-2xl font-bold">Proveedores</h1>
 
-      <div className="mb-6 rounded-lg border bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-lg border bg-card p-4 shadow-sm">
         <h2 className="mb-3 font-semibold">Alta de proveedor</h2>
         <div className="grid gap-2 sm:grid-cols-3">
           <input className="rounded border px-3 py-2" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           <input className="rounded border px-3 py-2" placeholder="País" value={pais} onChange={(e) => setPais(e.target.value)} />
           <input className="rounded border px-3 py-2" placeholder="Wallet USDC (destino)" value={wallet} onChange={(e) => setWallet(e.target.value)} />
         </div>
-        <button onClick={agregar} className="mt-3 rounded bg-petroleo px-4 py-2 text-sm font-medium text-white hover:bg-tinta">
+        <button onClick={agregar} className="mt-3 rounded bg-petroleo px-4 py-2 text-sm font-medium text-white hover:brightness-110">
           Agregar
         </button>
       </div>
 
-      <table className="w-full rounded-lg border bg-white text-sm shadow-sm">
+      <table className="w-full rounded-lg border bg-card text-sm shadow-sm">
         <thead className="border-b bg-fondo text-left">
           <tr><th className="p-3">Nombre</th><th className="p-3">País</th><th className="p-3">Wallet</th></tr>
         </thead>

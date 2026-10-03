@@ -2,13 +2,13 @@
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-white px-6 py-3">
+    <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-card px-6 py-3">
       <div className="flex flex-1 items-center gap-2 rounded-lg border bg-fondo px-3 py-2 text-sm text-tinta/40">
         <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         Buscar proveedor, transacción o ID…
-        <span className="ml-auto rounded border bg-white px-1.5 py-0.5 text-xs text-tinta/40">⌘K</span>
+        <span className="ml-auto rounded border bg-card px-1.5 py-0.5 text-xs text-tinta/40">⌘K</span>
       </div>
       <button className="rounded-lg p-2 text-tinta/60 hover:bg-fondo">
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

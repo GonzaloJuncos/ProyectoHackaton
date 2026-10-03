@@ -45,7 +45,7 @@ export default function Login() {
             <div className="space-y-3">
               <button
                 onClick={() => setTipo("empresa")}
-                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
+                className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition hover:border-menta hover:shadow"
               >
                 <span className="block font-semibold text-tinta">Cuenta empresa</span>
                 <span className="block text-sm text-tinta/50">
@@ -54,7 +54,7 @@ export default function Login() {
               </button>
               <button
                 onClick={() => setTipo("personal")}
-                className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
+                className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition hover:border-menta hover:shadow"
               >
                 <span className="block font-semibold text-tinta">Cuenta personal / proveedor</span>
                 <span className="block text-sm text-tinta/50">
@@ -76,7 +76,7 @@ export default function Login() {
                 <button
                   key={rol}
                   onClick={() => entrarEmpresa(rol)}
-                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
+                  className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition hover:border-menta hover:shadow"
                 >
                   <span className="block font-semibold capitalize text-tinta">{rol}</span>
                   <span className="block text-sm text-tinta/50">{descripcion}</span>
@@ -97,7 +97,7 @@ export default function Login() {
                 <button
                   key={p.id}
                   onClick={() => entrarProveedor(p.id)}
-                  className="w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-petroleo hover:shadow"
+                  className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition hover:border-menta hover:shadow"
                 >
                   <span className="block font-semibold text-tinta">{p.nombre}</span>
                   <span className="block text-sm text-tinta/50">{p.pais} · {p.wallet}</span>
@@ -110,7 +110,7 @@ export default function Login() {
         {tipo && (
           <button
             onClick={() => setTipo(null)}
-            className="mt-4 w-full text-center text-sm text-petroleo hover:underline"
+            className="mt-4 w-full text-center text-sm text-enlace hover:underline"
           >
             ← Volver
           </button>
