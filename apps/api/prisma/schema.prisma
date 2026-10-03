@@ -1,0 +1,184 @@
+// Modelo de datos Logis — ver docs/base-de-datos.md
+// SQLite no soporta enums: los estados/roles son string validados por @logis/shared.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Empresa {
+  id              String   @id @default(cuid())
+  nombre          String
+  pais            String   @default("AR")
+  multisigAddress String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  usuarios       Usuario[]
+  proveedores    Proveedor[]
+  ordenesCompra  OrdenCompra[]
+  facturas       Factura[]
+  auditLogs      AuditLog[]
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  empresaId    String   @map("empresa_id")
+  nombre       String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  rol          String // ADMIN | JEFE | SUPERVISOR | EMPLEADO
+  walletPubkey String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  empresa            Empresa    @relation(fields: [empresaId], references: [id])
+  facturasCargadas   Factura[]  @relation("cargadaPor")
+  firmas             Firma[]
+  accionesAudit      AuditLog[]
+
+  @@map("usuarios")
+}
+
+model Proveedor {
+  id         String   @id @default(cuid())
+  empresaId  String   @map("empresa_id")
+  nombre     String
+  cuitOTaxId String?  @map("cuit_o_tax_id")
+  pais       String   @default("AR")
+  email      String?
+  walletUsdc String   @map("wallet_usdc") // wallet destino del pago USDC
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  empresa       Empresa       @relation(fields: [empresaId], references: [id])
+  ordenesCompra OrdenCompra[]
+  facturas      Factura[]
+
+  @@map("proveedores")
+}
+
+model OrdenCompra {
+  id          String   @id @default(cuid())
+  empresaId   String   @map("empresa_id")
+  proveedorId String   @map("proveedor_id")
+  numero      String
+  monto       Float
+  moneda      String   @default("USD")
+  estado      String   @default("ABIERTA") // ABIERTA | CERRADA | ANULADA
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  proveedor Proveedor @relation(fields: [proveedorId], references: [id])
+  facturas  Factura[]
+
+  @@map("ordenes_compra")
+}
+
+model Factura {
+  id            String   @id @default(cuid())
+  empresaId     String   @map("empresa_id")
+  proveedorId   String   @map("proveedor_id")
+  ordenCompraId String?  @map("orden_compra_id")
+  numero        String
+  monto         Float
+  moneda        String   @default("USD")
+  hashSha256    String   @map("hash_sha256") // va on-chain en el memo del pago
+  estado        String   @default("CARGADA") // ver ESTADOS_FACTURA en shared
+  cargadaPorId  String   @map("cargada_por")
+  origen        String   @default("MANUAL") // MANUAL | CSV
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  empresa     Empresa          @relation(fields: [empresaId], references: [id])
+  proveedor   Proveedor        @relation(fields: [proveedorId], references: [id])
+  ordenCompra OrdenCompra?     @relation(fields: [ordenCompraId], references: [id])
+  cargadaPor  Usuario          @relation("cargadaPor", fields: [cargadaPorId], references: [id])
+  propuesta   PropuestaMultisig?
+  verificaciones Verificacion[]
+  pago          Pago?
+
+  @@map("facturas")
+}
+
+model PropuestaMultisig {
+  id              String   @id @default(cuid())
+  facturaId       String   @unique @map("factura_id")
+  multisigAddress String   @map("multisig_address")
+  proposalIndex   Int      @map("proposal_index")
+  umbral          Int      @default(2)
+  estado          String   @default("PENDIENTE") // ver ESTADOS_PROPUESTA en shared
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  factura Factura @relation(fields: [facturaId], references: [id])
+  firmas  Firma[]
+  pago    Pago?
+
+  @@map("propuestas_multisig")
+}
+
+model Firma {
+  id          String   @id @default(cuid())
+  propuestaId String   @map("propuesta_id")
+  usuarioId   String   @map("usuario_id")
+  txSignature String   @map("tx_signature")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  propuesta PropuestaMultisig @relation(fields: [propuestaId], references: [id])
+  usuario   Usuario           @relation(fields: [usuarioId], references: [id])
+
+  @@unique([propuestaId, usuarioId]) // una firma por usuario por propuesta
+  @@map("firmas")
+}
+
+model Verificacion {
+  id        String   @id @default(cuid())
+  facturaId String   @map("factura_id")
+  resultado String // OK | RECHAZADA
+  checks    Json // { ocCoincide, proveedorRegistrado, montoOk, sinDuplicados }
+  detalle   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  factura Factura @relation(fields: [facturaId], references: [id])
+
+  @@map("verificaciones")
+}
+
+model Pago {
+  id            String    @id @default(cuid())
+  facturaId     String    @unique @map("factura_id")
+  propuestaId   String    @unique @map("propuesta_id")
+  montoUsdc     Float     @map("monto_usdc")
+  destinoWallet String    @map("destino_wallet")
+  txSignature   String?   @map("tx_signature")
+  memo          String?
+  estado        String    @default("PENDIENTE") // PENDIENTE | ENVIADO | CONFIRMADO | FALLIDO
+  createdAt     DateTime  @default(now()) @map("created_at")
+  confirmedAt   DateTime? @map("confirmed_at")
+
+  factura   Factura           @relation(fields: [facturaId], references: [id])
+  propuesta PropuestaMultisig @relation(fields: [propuestaId], references: [id])
+
+  @@map("pagos")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  empresaId   String   @map("empresa_id")
+  entidad     String // "factura" | "pago" | "proveedor" | "propuesta"
+  entidadId   String   @map("entidad_id")
+  accion      String // "cargada" | "firmada" | "verificada" | "pagada" | "rechazada"
+  actorId     String?  @map("actor_id") // null = agente automático
+  detalle     Json?
+  txSignature String?  @map("tx_signature")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  empresa Empresa  @relation(fields: [empresaId], references: [id])
+  actor   Usuario? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_log")
+}
