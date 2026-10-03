@@ -1,8 +1,17 @@
-export default function Reportes() {
-  return (
-    <div>
-      <h1 className="mb-2 text-2xl font-bold">Reportes</h1>
-      <p className="text-sm text-tinta/60">Exportación de auditoría y reportes contables — en construcción.</p>
-    </div>
-  );
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useApp } from "@/context/AppContext";
+
+export default function ReportesPage() {
+  const router = useRouter();
+  const { setTab } = useApp();
+
+  useEffect(() => {
+    setTab("reportes");
+    router.replace("/?tab=reportes");
+  }, [router, setTab]);
+
+  return null;
 }
