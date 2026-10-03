@@ -3,13 +3,60 @@
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-* {
-  margin: 0;
-  box-sizing: border-box;
+* { margin: 0; box-sizing: border-box; }
+
+body { background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+button {
+  background: #1f6feb; color: #fff; border: 0; border-radius: 6px;
+  padding: 0.55rem 1rem; font: inherit; cursor: pointer;
+}
+button:hover { background: #388bfd; }
+button:disabled { opacity: 0.6; cursor: default; }
+button.link { background: none; color: #58a6ff; padding: 0; text-decoration: underline; }
+
+input {
+  width: 100%; background: #0d1117; color: #e6edf3;
+  border: 1px solid #30363d; border-radius: 6px; padding: 0.5rem 0.7rem;
+  font: inherit; margin-top: 0.3rem;
+}
+input:focus { border-color: #1f6feb; outline: none; }
+
+label { display: block; font-size: 0.85rem; color: #9198a1; margin-bottom: 0.8rem; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid #21262d; font-size: 0.9rem; }
+th { color: #9198a1; font-weight: 600; }
+code { font-size: 0.8rem; color: #a5d6ff; }
+
+.card {
+  background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+  padding: 1.5rem; max-width: 560px;
 }
 
-body {
-  background: #0d1117;
-  color: #e6edf3;
-  min-height: 100vh;
+.muted { color: #9198a1; }
+.small { font-size: 0.8rem; }
+.error { color: #ff7b72; margin: 0.5rem 0; }
+
+.login { display: grid; place-items: center; min-height: 100vh; }
+.login .card { width: 360px; }
+.login h1 { margin-bottom: 0.2rem; }
+.login .muted { margin-bottom: 1.2rem; }
+.login button { width: 100%; margin-top: 0.3rem; }
+.login .small { margin-top: 1rem; text-align: center; }
+
+.topnav {
+  display: flex; align-items: center; gap: 2rem;
+  padding: 0.8rem 1.5rem; background: #161b22; border-bottom: 1px solid #30363d;
 }
+.topnav .brand { font-weight: 700; font-size: 1.1rem; color: #e6edf3; text-decoration: none; }
+.nav-links { display: flex; gap: 1.2rem; flex: 1; }
+.nav-links a { color: #9198a1; text-decoration: none; font-size: 0.9rem; }
+.nav-links a:hover { color: #e6edf3; }
+.nav-user { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
+
+.contenido { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+.pagina-header { display: flex; justify-content: space-between; align-items: center; }
+
+.form-proveedor { max-width: none; margin-top: 1rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2rem; }

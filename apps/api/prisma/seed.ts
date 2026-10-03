@@ -1,6 +1,13 @@
 import { PrismaClient } from "@prisma/client";
+import { scryptSync, randomBytes } from "node:crypto";
 
 const prisma = new PrismaClient();
+
+// Password demo para todos los usuarios semilla: "logis123" (solo devnet/demo).
+const hashPassword = (password: string) => {
+  const salt = randomBytes(16).toString("hex");
+  return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
+};
 
 // Datos mínimos para la demo: 1 empresa, 4 usuarios (uno por rol),
 // 2 proveedores (local + exterior), 1 orden de compra, 2 facturas.
@@ -22,7 +29,7 @@ for (const u of usuarios) {
   await prisma.usuario.upsert({
     where: { email: u.email },
     update: {},
-    create: { ...u, empresaId: empresa.id, passwordHash: "demo-sin-login-real" },
+    create: { ...u, empresaId: empresa.id, passwordHash: hashPassword("logis123") },
   });
 }
 
