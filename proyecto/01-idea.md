@@ -1,5 +1,7 @@
 # 01 — Qué construir
 
+**Nombre del proyecto: Logis**
+
 ## Equipo
 
 - 5 integrantes: **Luz** (front 1), **Luli** (front 2), **Gonzalo** (back 1), **Maxi** (back 2), **Matías** (apoyo general / fullstack).

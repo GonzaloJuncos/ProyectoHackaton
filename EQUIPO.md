@@ -1,4 +1,4 @@
-# Equipo y división de trabajo
+# Equipo y división de trabajo — Logis
 
 5 personas, 4 computadoras. Trabajo por **ramas de GitHub**.
 
