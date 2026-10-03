@@ -209,6 +209,7 @@ export default function Facturas() {
     <section>
       <header className="pagina-header">
         <h2>Facturas</h2>
+      <p className="muted small">Los pagos se ejecutan en <strong>USDC de prueba sobre devnet</strong>. El proveedor recibe USDC en su wallet y gestiona su propia conversión a moneda local.</p>
         <div className="acciones">
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onCsv} hidden id="csv-input" />
           <button className="secundario" onClick={() => fileRef.current?.click()}>Importar CSV</button>
