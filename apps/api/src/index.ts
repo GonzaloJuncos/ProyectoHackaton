@@ -3,6 +3,10 @@ import cors from "@fastify/cors";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { hashPassword, verifyPassword, crearSesion, requireAuth, requireRoles } from "./auth.js";
+import {
+  infoCrearMultisig, infoPropuestaPago, infoAprobar, infoEjecutar,
+  leerPropuesta, leerMiembrosMultisig,
+} from "./squads.js";
 
 const prisma = new PrismaClient();
 const app = Fastify({ logger: true });
@@ -118,7 +122,11 @@ app.post("/api/proveedores", { preHandler: auth }, async (req, reply) => {
     return reply.code(400).send({ error: "faltan campos: nombre, walletUsdc" });
   }
   const proveedor = await prisma.proveedor.create({
-    data: { ...body, empresaId: req.usuario!.empresaId },
+    data: {
+      nombre: body.nombre, walletUsdc: body.walletUsdc,
+      cuitOTaxId: body.cuitOTaxId, pais: body.pais, email: body.email,
+      empresaId: req.usuario!.empresaId,
+    },
   });
   await prisma.auditLog.create({
     data: { empresaId: req.usuario!.empresaId, entidad: "proveedor", entidadId: proveedor.id, accion: "cargada", actorId: req.usuario!.id },
@@ -305,6 +313,240 @@ app.post("/api/facturas/lote", { preHandler: auth }, async (req, reply) => {
     creadas++;
   }
   return { creadas, errores };
+});
+
+// ---------- Empresa + Multisig Squads (RF-05) ----------
+
+const soloFirmantes = requireRoles(prisma, ["ADMIN", "JEFE", "SUPERVISOR"]);
+
+// Las instrucciones que devuelven estos endpoints se firman con la wallet
+// conectada en el front. La API nunca firma: solo construye y registra.
+
+const firmantesDeLaEmpresa = async (empresaId: string) => {
+  const firmantes = await prisma.usuario.findMany({
+    where: { empresaId, rol: { in: ["ADMIN", "JEFE", "SUPERVISOR"] }, activo: true, walletPubkey: { not: null } },
+    select: { walletPubkey: true },
+  });
+  return firmantes.map((f) => f.walletPubkey!);
+};
+
+const requiereMultisig = async (empresaId: string) => {
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+  return empresa?.multisigAddress ?? null;
+};
+
+const walletDeMiembro = async (req: { usuario?: import("@prisma/client").Usuario }, multisigAddress: string) => {
+  const wallet = req.usuario!.walletPubkey;
+  if (!wallet) throw Object.assign(new Error("conectá y vinculá tu wallet Phantom primero"), { statusCode: 400 });
+  const { miembros } = await leerMiembrosMultisig(multisigAddress);
+  if (!miembros.includes(wallet)) {
+    throw Object.assign(new Error("tu wallet no es miembro del multisig de la empresa"), { statusCode: 403 });
+  }
+  return wallet;
+};
+
+app.get("/api/empresa", { preHandler: auth }, async (req) => {
+  const empresa = await prisma.empresa.findUnique({ where: { id: req.usuario!.empresaId } });
+  const firmantes = await prisma.usuario.findMany({
+    where: { empresaId: empresa!.id, rol: { in: ["ADMIN", "JEFE", "SUPERVISOR"] }, activo: true },
+    select: { id: true, nombre: true, rol: true, walletPubkey: true },
+  });
+  let multisig = null;
+  if (empresa?.multisigAddress) {
+    try { multisig = await leerMiembrosMultisig(empresa.multisigAddress); } catch { /* RPC caído */ }
+  }
+  return { ...empresa, firmantes, multisig };
+});
+
+// Paso 1: construir instrucciones para crear el multisig (ADMIN)
+app.post("/api/empresa/multisig/crear-info", { preHandler: soloAdmin }, async (req, reply) => {
+  const empresaId = req.usuario!.empresaId;
+  if (await requiereMultisig(empresaId)) return reply.code(409).send({ error: "la empresa ya tiene multisig" });
+  if (!req.usuario!.walletPubkey) {
+    return reply.code(400).send({ error: "conectá y vinculá tu wallet Phantom primero (tu wallet es miembro del multisig)" });
+  }
+  const firmantes = await firmantesDeLaEmpresa(empresaId);
+  if (firmantes.length < 2) {
+    return reply.code(400).send({
+      error: `se necesitan al menos 2 firmantes con wallet vinculada (hay ${firmantes.length}). Que jefe y supervisor conecten su Phantom.`,
+    });
+  }
+  return infoCrearMultisig(firmantes, req.usuario!.walletPubkey);
+});
+
+// Paso 2: confirmar que el multisig quedó creado on-chain
+app.post("/api/empresa/multisig/confirmar", { preHandler: soloAdmin }, async (req, reply) => {
+  const { multisigAddress, txSignature } = (req.body ?? {}) as { multisigAddress?: string; txSignature?: string };
+  if (!multisigAddress || !txSignature) return reply.code(400).send({ error: "faltan multisigAddress y txSignature" });
+  try {
+    await leerMiembrosMultisig(multisigAddress);
+  } catch {
+    return reply.code(400).send({ error: "el multisig no existe todavía en devnet — esperá la confirmación de la tx" });
+  }
+  const empresa = await prisma.empresa.update({
+    where: { id: req.usuario!.empresaId },
+    data: { multisigAddress },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: empresa.id, entidad: "propuesta", entidadId: multisigAddress, accion: "multisig_creado", actorId: req.usuario!.id, txSignature },
+  });
+  return empresa;
+});
+
+// Paso 3: proponer el pago de una factura (cualquier miembro)
+app.post("/api/facturas/:id/propuesta-info", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const factura = await prisma.factura.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+    include: { proveedor: true, propuesta: true },
+  });
+  if (!factura) return reply.code(404).send({ error: "factura no encontrada" });
+  if (factura.estado !== "CARGADA") return reply.code(409).send({ error: `la factura está en estado ${factura.estado}` });
+  if (factura.propuesta) return reply.code(409).send({ error: "la factura ya tiene propuesta" });
+  const multisigAddress = await requiereMultisig(req.usuario!.empresaId);
+  if (!multisigAddress) return reply.code(400).send({ error: "la empresa no tiene multisig configurado" });
+  const wallet = await walletDeMiembro(req, multisigAddress);
+  return infoPropuestaPago({
+    multisigAddress,
+    creador: wallet,
+    destinoWallet: factura.proveedor.walletUsdc,
+    montoUsd: factura.monto,
+    facturaHash: factura.hashSha256,
+  });
+});
+
+app.post("/api/facturas/:id/propuesta-confirmar", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const { transactionIndex, txSignature } = (req.body ?? {}) as { transactionIndex?: number; txSignature?: string };
+  if (transactionIndex == null || !txSignature) return reply.code(400).send({ error: "faltan transactionIndex y txSignature" });
+  const factura = await prisma.factura.findFirst({ where: { id, empresaId: req.usuario!.empresaId } });
+  const multisigAddress = await requiereMultisig(req.usuario!.empresaId);
+  if (!factura || !multisigAddress) return reply.code(404).send({ error: "factura o multisig no encontrado" });
+
+  const propuesta = await prisma.propuestaMultisig.create({
+    data: { facturaId: id, multisigAddress, proposalIndex: transactionIndex },
+  });
+  await prisma.factura.update({ where: { id }, data: { estado: "EN_APROBACION" } });
+  await prisma.auditLog.create({
+    data: { empresaId: factura.empresaId, entidad: "propuesta", entidadId: propuesta.id, accion: "propuesta_creada", actorId: req.usuario!.id, txSignature },
+  });
+  return reply.code(201).send(propuesta);
+});
+
+// Paso 4: aprobar (cada firmante firma on-chain)
+app.post("/api/facturas/:id/aprobar-info", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const factura = await prisma.factura.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+    include: { propuesta: { include: { firmas: true } } },
+  });
+  if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
+  if (factura.propuesta.estado === "EJECUTADA") return reply.code(409).send({ error: "la propuesta ya se ejecutó" });
+  const wallet = await walletDeMiembro(req, factura.propuesta.multisigAddress);
+  if (factura.propuesta.firmas.some((f) => f.usuarioId === req.usuario!.id)) {
+    return reply.code(409).send({ error: "ya firmaste esta propuesta" });
+  }
+  return infoAprobar({ multisigAddress: factura.propuesta.multisigAddress, miembro: wallet, transactionIndex: factura.propuesta.proposalIndex });
+});
+
+app.post("/api/facturas/:id/aprobar-confirmar", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const { txSignature } = (req.body ?? {}) as { txSignature?: string };
+  if (!txSignature) return reply.code(400).send({ error: "falta txSignature" });
+  const factura = await prisma.factura.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+    include: { propuesta: true },
+  });
+  if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
+
+  const firma = await prisma.firma.create({
+    data: { propuestaId: factura.propuesta.id, usuarioId: req.usuario!.id, txSignature },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: factura.empresaId, entidad: "propuesta", entidadId: factura.propuesta.id, accion: "firmada", actorId: req.usuario!.id, txSignature },
+  });
+
+  // Estado real on-chain: ¿llegó al umbral?
+  const onchain = await leerPropuesta(factura.propuesta.multisigAddress, factura.propuesta.proposalIndex);
+  if (onchain.aprobada) {
+    await prisma.propuestaMultisig.update({ where: { id: factura.propuesta.id }, data: { estado: "UMBRAL_ALCANZADO" } });
+    await prisma.factura.update({ where: { id }, data: { estado: "APROBADA" } });
+  }
+  return reply.code(201).send({ firma, onchain });
+});
+
+// Paso 5: ejecutar — RF-06: el agente verifica la factura ANTES de devolver la instrucción
+app.post("/api/facturas/:id/ejecutar-info", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const factura = await prisma.factura.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+    include: { proveedor: true, ordenCompra: true, propuesta: { include: { firmas: true } } },
+  });
+  if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
+  if (factura.propuesta.estado !== "UMBRAL_ALCANZADO" && factura.propuesta.estado !== "PENDIENTE") {
+    return reply.code(409).send({ error: `la propuesta está ${factura.propuesta.estado}` });
+  }
+
+  const onchain = await leerPropuesta(factura.propuesta.multisigAddress, factura.propuesta.proposalIndex);
+  if (!onchain.aprobada) return reply.code(409).send({ error: "la propuesta todavía no alcanzó 2/3 on-chain" });
+
+  // --- RF-06: verificación del agente ---
+  const duplicadas = await prisma.factura.count({
+    where: { empresaId: factura.empresaId, proveedorId: factura.proveedorId, numero: factura.numero, NOT: { id: factura.id } },
+  });
+  const checks = {
+    ocCoincide: factura.ordenCompraId ? factura.ordenCompra !== null && factura.monto <= factura.ordenCompra.monto : true,
+    proveedorRegistrado: factura.proveedor.activo,
+    montoOk: factura.monto > 0,
+    sinDuplicados: duplicadas === 0,
+  };
+  const ok = Object.values(checks).every(Boolean);
+  await prisma.verificacion.create({
+    data: { facturaId: id, resultado: ok ? "OK" : "RECHAZADA", checks, detalle: ok ? null : "la factura no pasó la verificación" },
+  });
+  if (!ok) {
+    await prisma.factura.update({ where: { id }, data: { estado: "VERIFICACION_FALLIDA" } });
+    return reply.code(422).send({ error: "la verificación del agente falló", checks });
+  }
+  // --- fin RF-06 ---
+
+  const wallet = await walletDeMiembro(req, factura.propuesta.multisigAddress);
+  const info = await infoEjecutar({
+    multisigAddress: factura.propuesta.multisigAddress,
+    miembro: wallet,
+    transactionIndex: factura.propuesta.proposalIndex,
+  });
+  return { ...info, checks };
+});
+
+app.post("/api/facturas/:id/ejecutar-confirmar", { preHandler: soloFirmantes }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const { txSignature } = (req.body ?? {}) as { txSignature?: string };
+  if (!txSignature) return reply.code(400).send({ error: "falta txSignature" });
+  const factura = await prisma.factura.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+    include: { proveedor: true, propuesta: true },
+  });
+  if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
+
+  const pago = await prisma.pago.create({
+    data: {
+      facturaId: id,
+      propuestaId: factura.propuesta.id,
+      montoUsdc: factura.monto,
+      destinoWallet: factura.proveedor.walletUsdc,
+      txSignature,
+      memo: `logis:factura:${factura.hashSha256}`,
+      estado: "CONFIRMADO",
+      confirmedAt: new Date(),
+    },
+  });
+  await prisma.propuestaMultisig.update({ where: { id: factura.propuesta.id }, data: { estado: "EJECUTADA" } });
+  await prisma.factura.update({ where: { id }, data: { estado: "PAGADA" } });
+  await prisma.auditLog.create({
+    data: { empresaId: factura.empresaId, entidad: "pago", entidadId: pago.id, accion: "pagada", actorId: req.usuario!.id, txSignature },
+  });
+  return reply.code(201).send(pago);
 });
 
 // ---------- Conciliación (RF-08) ----------

@@ -12,3 +12,4 @@ Thumbs.db
 nul
 .DS_Store
 *.tsbuildinfo
+apps/api/api.log

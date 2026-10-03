@@ -34,6 +34,10 @@ button.secundario:hover { background: #30363d; }
 .estado-pagada { background: #3fb95033; color: #3fb950; }
 .estado-rechazada, .estado-verificacion_fallida { background: #f8514933; color: #ff7b72; }
 
+.ok { color: #3fb950; margin: 0.5rem 0; }
+a.link { color: #58a6ff; }
+.aviso-multisig { display: flex; align-items: center; gap: 0.8rem; margin-top: 1rem; max-width: none; }
+
 label { display: block; font-size: 0.85rem; color: #9198a1; margin-bottom: 0.8rem; }
 
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
