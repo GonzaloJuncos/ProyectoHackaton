@@ -16,7 +16,7 @@ export default function Login() {
     setEnviando(true);
     try {
       await login(email, password);
-      navigate("/proveedores");
+      navigate("/facturas");
     } catch (err) {
       setError(err instanceof Error ? err.message : "error al iniciar sesión");
     } finally {
