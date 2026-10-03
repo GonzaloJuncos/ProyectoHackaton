@@ -117,8 +117,34 @@ export interface ApiError {
   detalle?: string;
 }
 
+// POST /api/auth/login
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  usuario: Usuario;
+}
+
+// GET /api/auth/me -> Usuario
+// POST /api/auth/logout -> 204 (header Authorization: Bearer <token>)
+
+// POST /api/usuarios (solo ADMIN)
+export interface CrearUsuarioBody {
+  nombre: string;
+  email: string;
+  password: string;
+  rol: Rol;
+  walletPubkey?: string;
+}
+
 // POST /api/proveedores
-export type CrearProveedorBody = Omit<Proveedor, "id" | "activo">;
+export type CrearProveedorBody = Omit<Proveedor, "id" | "empresaId" | "activo">;
+
+// PATCH /api/proveedores/:id
+export type ActualizarProveedorBody = Partial<CrearProveedorBody & { activo: boolean }>;
 
 // POST /api/facturas
 export interface CrearFacturaBody {

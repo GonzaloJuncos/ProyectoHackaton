@@ -41,6 +41,7 @@ model Usuario {
   facturasCargadas   Factura[]  @relation("cargadaPor")
   firmas             Firma[]
   accionesAudit      AuditLog[]
+  sesiones           Sesion[]
 
   @@map("usuarios")
 }
@@ -164,6 +165,17 @@ model Pago {
   propuesta PropuestaMultisig @relation(fields: [propuestaId], references: [id])
 
   @@map("pagos")
+}
+
+model Sesion {
+  token     String   @id
+  usuarioId String   @map("usuario_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@map("sesiones")
 }
 
 model AuditLog {
