@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Proveedor, OrdenCompra, LoteFacturasResultado, EstadoFactura } from "@logis/shared";
+import { useConnectedWallet } from "@solana/kit-plugin-wallet/react";
 import { api } from "../api";
+import { useAuth } from "../auth";
+import { client } from "../solana/client";
+import { enviarInstrucciones, type IxSerializada } from "../solana/ix";
 
 interface FacturaListada {
   id: string;
@@ -13,7 +17,15 @@ interface FacturaListada {
   proveedorNombre: string;
   ocNumero: string | null;
   firmasCount: number;
+  propuesta?: { id: string; proposalIndex: number; firmas: { usuarioId: string }[] } | null;
+  pago?: { txSignature: string | null } | null;
   createdAt: string;
+}
+
+interface EmpresaInfo {
+  id: string;
+  multisigAddress: string | null;
+  firmantes: { id: string; nombre: string; rol: string; walletPubkey: string | null }[];
 }
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -37,30 +49,103 @@ const parseCsv = (texto: string) =>
     });
 
 export default function Facturas() {
+  const { usuario } = useAuth();
+  const connected = useConnectedWallet(client);
   const [facturas, setFacturas] = useState<FacturaListada[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [ocs, setOcs] = useState<(OrdenCompra & { proveedor?: { nombre: string } })[]>([]);
+  const [empresa, setEmpresa] = useState<EmpresaInfo | null>(null);
   const [form, setForm] = useState({ proveedorId: "", ordenCompraId: "", numero: "", monto: "" });
   const [mostrarForm, setMostrarForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [ocupado, setOcupado] = useState<string | null>(null); // facturaId/acción en curso
+  const [aviso, setAviso] = useState<string | null>(null);
   const [csvInfo, setCsvInfo] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const cargar = async () => {
-    const [f, p, o] = await Promise.all([
+    const [f, p, o, e] = await Promise.all([
       api<FacturaListada[]>("/facturas"),
       api<Proveedor[]>("/proveedores"),
       api<(OrdenCompra & { proveedor?: { nombre: string } })[]>("/ordenes-compra"),
+      api<EmpresaInfo>("/empresa"),
     ]);
     setFacturas(f);
     setProveedores(p);
     setOcs(o);
+    setEmpresa(e);
   };
 
   useEffect(() => {
     cargar().catch((e) => setError(e.message));
   }, []);
+
+  const miWallet = connected?.account.address ?? null;
+  const esMiembro = Boolean(miWallet && empresa?.firmantes.some((f) => f.walletPubkey === miWallet));
+
+  /** Pide instrucciones a la API, las firma con la wallet y confirma. */
+  const ejecutar = async (clave: string, fn: () => Promise<void>) => {
+    setOcupado(clave);
+    setError(null);
+    setAviso(null);
+    try {
+      await fn();
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "error en la operación");
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const crearMultisig = () =>
+    ejecutar("multisig", async () => {
+      const info = await api<{ multisigAddress: string; instrucciones: IxSerializada[] }>(
+        "/empresa/multisig/crear-info", { method: "POST", body: "{}" });
+      const sig = await enviarInstrucciones(client, info.instrucciones);
+      await api("/empresa/multisig/confirmar", {
+        method: "POST",
+        body: JSON.stringify({ multisigAddress: info.multisigAddress, txSignature: sig }),
+      });
+      setAviso(`Multisig creado: ${info.multisigAddress.slice(0, 8)}…`);
+    });
+
+  const proponer = (f: FacturaListada) =>
+    ejecutar(`prop-${f.id}`, async () => {
+      const info = await api<{ transactionIndex: number; instrucciones: IxSerializada[] }>(
+        `/facturas/${f.id}/propuesta-info`, { method: "POST", body: "{}" });
+      const sig = await enviarInstrucciones(client, info.instrucciones);
+      await api(`/facturas/${f.id}/propuesta-confirmar`, {
+        method: "POST",
+        body: JSON.stringify({ transactionIndex: info.transactionIndex, txSignature: sig }),
+      });
+      setAviso(`Propuesta creada para ${f.numero} — faltan 2 firmas`);
+    });
+
+  const aprobar = (f: FacturaListada) =>
+    ejecutar(`apr-${f.id}`, async () => {
+      const info = await api<{ instrucciones: IxSerializada[] }>(
+        `/facturas/${f.id}/aprobar-info`, { method: "POST", body: "{}" });
+      const sig = await enviarInstrucciones(client, info.instrucciones);
+      const res = await api<{ onchain: { aprobada: boolean } }>(`/facturas/${f.id}/aprobar-confirmar`, {
+        method: "POST",
+        body: JSON.stringify({ txSignature: sig }),
+      });
+      setAviso(res.onchain.aprobada ? `${f.numero} alcanzó 2/3 — lista para ejecutar` : `Firma registrada en ${f.numero}`);
+    });
+
+  const ejecutarPago = (f: FacturaListada) =>
+    ejecutar(`eje-${f.id}`, async () => {
+      const info = await api<{ instrucciones: IxSerializada[] }>(
+        `/facturas/${f.id}/ejecutar-info`, { method: "POST", body: "{}" });
+      const sig = await enviarInstrucciones(client, info.instrucciones);
+      await api(`/facturas/${f.id}/ejecutar-confirmar`, {
+        method: "POST",
+        body: JSON.stringify({ txSignature: sig }),
+      });
+      setAviso(`Pago ejecutado para ${f.numero} — tx ${sig.slice(0, 8)}…`);
+    });
 
   const ocsDelProveedor = useMemo(
     () => ocs.filter((o) => o.proveedorId === form.proveedorId && o.estado === "ABIERTA"),
@@ -180,7 +265,30 @@ export default function Facturas() {
       )}
 
       {csvInfo && <p className="muted">{csvInfo}</p>}
+      {aviso && <p className="ok">{aviso}</p>}
       {error && !mostrarForm && <p className="error">{error}</p>}
+
+      {empresa && !empresa.multisigAddress && (
+        <div className="card aviso-multisig">
+          <strong>Multisig no configurado.</strong>{" "}
+          {usuario?.rol === "ADMIN"
+            ? esMiembro || miWallet
+              ? "Creá el multisig 2/3 de la empresa con las wallets de admin/jefe/supervisor."
+              : "Conectá tu Phantom primero — tu wallet queda como miembro firmante."
+            : "Un administrador tiene que crear el multisig para habilitar aprobaciones."}
+          {usuario?.rol === "ADMIN" && (
+            <button onClick={crearMultisig} disabled={!miWallet || ocupado === "multisig"}>
+              {ocupado === "multisig" ? "Creando…" : "Crear multisig 2/3"}
+            </button>
+          )}
+        </div>
+      )}
+      {empresa?.multisigAddress && (
+        <p className="muted small">
+          Multisig: <code>{empresa.multisigAddress.slice(0, 12)}…</code> · umbral 2/{empresa.firmantes.filter((f) => f.walletPubkey).length || 3}
+          {miWallet && !esMiembro && " · tu wallet no es miembro"}
+        </p>
+      )}
 
       <table>
         <thead>
@@ -193,6 +301,7 @@ export default function Facturas() {
             <th>Firmas</th>
             <th>Hash</th>
             <th>Origen</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -206,10 +315,37 @@ export default function Facturas() {
               <td>{f.firmasCount}/2</td>
               <td><code title={f.hashSha256}>{f.hashSha256.slice(0, 8)}…</code></td>
               <td className="muted">{f.origen.toLowerCase()}</td>
+              <td>
+                {f.estado === "CARGADA" && empresa?.multisigAddress && esMiembro && (
+                  <button className="link" disabled={ocupado === `prop-${f.id}`} onClick={() => proponer(f)}>
+                    {ocupado === `prop-${f.id}` ? "proponiendo…" : "proponer pago"}
+                  </button>
+                )}
+                {f.estado === "EN_APROBACION" && esMiembro &&
+                  !f.propuesta?.firmas.some((s) => s.usuarioId === usuario?.id) && (
+                  <button className="link" disabled={ocupado === `apr-${f.id}`} onClick={() => aprobar(f)}>
+                    {ocupado === `apr-${f.id}` ? "firmando…" : "aprobar"}
+                  </button>
+                )}
+                {f.estado === "APROBADA" && esMiembro && (
+                  <button className="link" disabled={ocupado === `eje-${f.id}`} onClick={() => ejecutarPago(f)}>
+                    {ocupado === `eje-${f.id}` ? "ejecutando…" : "ejecutar pago"}
+                  </button>
+                )}
+                {f.estado === "PAGADA" && f.pago?.txSignature && (
+                  <a
+                    className="link"
+                    href={`https://explorer.solana.com/tx/${f.pago.txSignature}?cluster=devnet`}
+                    target="_blank" rel="noreferrer"
+                  >
+                    ver tx
+                  </a>
+                )}
+              </td>
             </tr>
           ))}
           {facturas.length === 0 && (
-            <tr><td colSpan={8} className="muted">Todavía no hay facturas cargadas.</td></tr>
+            <tr><td colSpan={9} className="muted">Todavía no hay facturas cargadas.</td></tr>
           )}
         </tbody>
       </table>
