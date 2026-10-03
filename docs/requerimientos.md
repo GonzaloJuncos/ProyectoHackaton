@@ -1,6 +1,6 @@
 # Requerimientos — Logis
 
-> Documento interno del equipo. La entrega final de la hackathon se redacta en inglés a partir de esto.
+> Documento interno del equipo, en español. La entrega final de la hackathon se redacta en inglés a partir de esto.
 
 ## 1. Introducción
 
@@ -14,26 +14,37 @@
 
 | Alcance | Incluye |
 |---|---|
-| **MVP (hackathon)** | Alta de proveedor → carga de factura → aprobación multisig 2/3 → pago USDC con hash de factura on-chain → dashboard de conciliación |
-| **Visión futura** | Off-ramp a fiat, integraciones reales con bancos/contadores/ERP, escrow por recepción de mercadería, descuento por pronto pago, pagos por agentes (x402), KYB completo |
+| **MVP (hackathon)** | Usuarios con roles → alta de proveedor → carga de factura → aprobación multisig 2/3 → pago USDC con hash de factura on-chain → dashboard de conciliación |
+| **Visión futura** | Off-ramp a fiat gestionado por la plataforma, integraciones reales con bancos/contadores/ERP, escrow por recepción de mercadería, descuento por pronto pago, pagos por agentes (x402), KYB completo |
 
 ## 3. Requerimientos funcionales
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-01 | El usuario conecta su wallet (Phantom) en **devnet** como identidad de la empresa | MVP |
-| RF-02 | Alta y gestión de proveedores: datos de contacto/fiscales y wallet destino | MVP |
-| RF-03 | Carga de facturas de forma manual y por CSV; referencia a orden de compra | MVP |
-| RF-04 | Flujo de aprobación con **multisig 2/3 on-chain**: el pago solo se ejecuta cuando 2 de 3 responsables firman | MVP |
-| RF-05 | Ejecución del pago en USDC con **hash de factura embebido** en la transacción (memo / Token-2022) | MVP |
-| RF-06 | Dashboard de conciliación: cada factura vinculada a su pago y su tx on-chain | MVP |
-| RF-07 | Historial auditable: consulta de transacciones y su evidencia | MVP |
-| RF-08 | Soporte para proveedores locales y del exterior (la demo enfatiza cross-border) | MVP |
-| RF-09 | Integración con bancos, contadores y ERP reales | Futuro |
-| RF-10 | Off-ramp: liquidación a fiat local para el proveedor | Futuro |
-| RF-11 | Escrow / liberación de pago al confirmar recepción de mercadería | Futuro |
-| RF-12 | Descuento por pronto pago (dynamic discounting desde vault on-chain) | Futuro |
-| RF-13 | Pagos iniciados por agentes de IA (x402) | Futuro |
+| RF-01 | Login con usuario/contraseña y **roles internos**: administrador, jefe, supervisor, empleado | MVP |
+| RF-02 | Conexión de wallet (Phantom) en **devnet** para las cuentas que firman aprobaciones | MVP |
+| RF-03 | Alta y gestión de proveedores: datos de contacto/fiscales y wallet destino | MVP |
+| RF-04 | Carga de facturas de forma manual y por CSV; referencia a orden de compra | MVP |
+| RF-05 | Flujo de aprobación con **multisig 2/3 on-chain**: el pago solo se ejecuta cuando 2 de 3 responsables firman (aprobadores: jefe, supervisor y administrador; el empleado carga pero no aprueba) | MVP |
+| RF-06 | Ejecución del pago **exclusivamente en USDC**, con **hash de factura embebido** en la transacción (memo / Token-2022) | MVP |
+| RF-07 | Dashboard de conciliación: cada factura vinculada a su pago y su tx on-chain | MVP |
+| RF-08 | Historial auditable: consulta de transacciones y su evidencia | MVP |
+| RF-09 | Soporte para proveedores locales y del exterior (la demo enfatiza cross-border) | MVP |
+| RF-10 | Transparencia de cobro: el proveedor ve claramente que **cobra en USDC** y gestiona su propia salida a fiat (off-ramp a cargo del proveedor) | MVP |
+| RF-11 | Integración con bancos, contadores y ERP reales | Futuro |
+| RF-12 | Off-ramp a fiat gestionado por la plataforma | Futuro |
+| RF-13 | Escrow / liberación de pago al confirmar recepción de mercadería | Futuro |
+| RF-14 | Descuento por pronto pago (dynamic discounting desde vault on-chain) | Futuro |
+| RF-15 | Pagos iniciados por agentes de IA (x402) | Futuro |
+
+### Roles internos
+
+| Rol | Puede |
+|---|---|
+| Administrador | Gestionar usuarios y proveedores, configurar la empresa, **firmar aprobaciones** |
+| Jefe | Revisar facturas y **firmar aprobaciones** |
+| Supervisor | Revisar facturas y **firmar aprobaciones** |
+| Empleado | Cargar facturas y proveedores; no aprueba pagos |
 
 ## 4. Requerimientos no funcionales
 
@@ -46,14 +57,18 @@
 | RNF-05 | La demo completa corre en ~3 minutos: un solo caso de uso de punta a punta |
 | RNF-06 | URL pública accesible para los jurados (vale más que un link a GitHub) |
 | RNF-07 | El pago on-chain liquida en segundos (el contraste con SWIFT es parte del pitch) |
-| RNF-08 | Auditoría inmutable: la metadata de la factura queda trazable on-chain (RF-05) |
+| RNF-08 | Auditoría inmutable: la metadata de la factura queda trazable on-chain (RF-06) |
 | RNF-09 | Web responsive; UX pensada para usuarios no-cripto (cada término técnico se explica o se oculta) |
 | RNF-10 | Stack y librerías según skill `solana-dev` (librerías actuales, no las de tutoriales viejos) |
+| RNF-11 | Interfaz y documentación interna **en español**; solo el código y la entrega final van en inglés |
 
 ## 5. Regulación
 
 La normativa argentina vigente sobre uso de cripto/blockchain se menciona como **contexto en el pitch**; no se promete compliance ni se implementan features regulatorias en el MVP.
 
-## 6. Fuera del documento
+## 6. Decisiones tomadas
 
-Las dudas de diseño pendientes (autenticación, off-ramp, elección Squads vs. programa propio, monedas soportadas) se discuten con el equipo y su resolución queda en `proyecto/02-validacion.md` / `proyecto/03-mvp.md`. Este documento registra decisiones, no preguntas.
+- Autenticación: usuario/contraseña + roles internos; la wallet se usa solo para firmar aprobaciones y pagos.
+- Moneda: exclusivamente **USDC**.
+- Off-ramp: a cargo del proveedor, comunicado con transparencia (RF-10).
+- Implementación del multisig 2/3: **pendiente** — opciones Squads vs. programa propio, en discusión (ver `proyecto/`).
