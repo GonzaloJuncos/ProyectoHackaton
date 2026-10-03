@@ -140,6 +140,11 @@ export interface CrearUsuarioBody {
   walletPubkey?: string;
 }
 
+// PUT /api/usuarios/me/wallet — vincula la wallet firmante (RF-02)
+export interface VincularWalletBody {
+  walletPubkey: string;
+}
+
 // POST /api/proveedores
 export type CrearProveedorBody = Omit<Proveedor, "id" | "empresaId" | "activo">;
 

@@ -7,6 +7,7 @@ interface AuthCtx {
   cargando: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  actualizarUsuario: (u: Usuario) => void;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -38,7 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   };
 
-  return <Ctx.Provider value={{ usuario, cargando, login, logout }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ usuario, cargando, login, logout, actualizarUsuario: setUsuario }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export const useAuth = () => {

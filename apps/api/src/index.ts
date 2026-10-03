@@ -69,6 +69,27 @@ app.post("/api/usuarios", { preHandler: soloAdmin }, async (req, reply) => {
   return reply.code(201).send(resto);
 });
 
+// ---------- Wallet del usuario (RF-02) ----------
+
+// Guarda la pubkey que el usuario usa para firmar aprobaciones en devnet.
+const PUBKEY_BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+app.put("/api/usuarios/me/wallet", { preHandler: auth }, async (req, reply) => {
+  const { walletPubkey } = (req.body ?? {}) as { walletPubkey?: string };
+  if (!walletPubkey || !PUBKEY_BASE58.test(walletPubkey)) {
+    return reply.code(400).send({ error: "walletPubkey inválida" });
+  }
+  const usuario = await prisma.usuario.update({
+    where: { id: req.usuario!.id },
+    data: { walletPubkey },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: usuario.empresaId, entidad: "usuario", entidadId: usuario.id, accion: "wallet_vinculada", actorId: usuario.id },
+  });
+  const { passwordHash: _, ...resto } = usuario;
+  return resto;
+});
+
 // ---------- Proveedores (RF-03) ----------
 
 app.get("/api/proveedores", { preHandler: auth }, async (req) => {

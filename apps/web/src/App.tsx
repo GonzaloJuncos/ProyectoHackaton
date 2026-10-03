@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { ClientProvider } from "@solana/react";
+import { client } from "./solana/client";
 import { AuthProvider, useAuth } from "./auth";
+import WalletButton from "./components/WalletButton";
 import Login from "./pages/Login";
 import Proveedores from "./pages/Proveedores";
 
@@ -13,6 +16,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <Link to="/proveedores">Proveedores</Link>
         </div>
         <div className="nav-user">
+          <WalletButton client={client} />
           <span>{usuario?.nombre} <em className="muted">({usuario?.rol.toLowerCase()})</em></span>
           <button className="link" onClick={logout}>salir</button>
         </div>
@@ -31,14 +35,16 @@ function Protegido({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/proveedores" element={<Protegido><Proveedores /></Protegido>} />
-          <Route path="*" element={<Navigate to="/proveedores" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <ClientProvider client={client}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/proveedores" element={<Protegido><Proveedores /></Protegido>} />
+            <Route path="*" element={<Navigate to="/proveedores" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ClientProvider>
   );
 }
