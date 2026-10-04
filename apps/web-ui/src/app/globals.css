@@ -5,6 +5,7 @@
   --surface: #ffffff;
   --fg: #0b2a33;
   --link: #0b5563;
+  --logo-top: #0b5563;
 }
 
 [data-theme="dark"] {
@@ -12,6 +13,7 @@
   --surface: #0b2a33;
   --fg: #eef6f4;
   --link: #3fd0a8;
+  --logo-top: #9fbec1;
 }
 
 @theme inline {

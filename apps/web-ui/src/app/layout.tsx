@@ -5,6 +5,11 @@ import Shell from "@/components/Shell";
 export const metadata: Metadata = {
   title: "Logis — Pagos a proveedores",
   description: "Aprobá y pagá a tus proveedores en USDC con evidencia auditable on-chain.",
+  icons: {
+    icon: "/isotipo-logis.svg",
+    shortcut: "/isotipo-logis.svg",
+    apple: "/isotipo-logis.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

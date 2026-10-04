@@ -1,31 +1,103 @@
-import Fastify from "fastify";
+import Fastify, { FastifyRequest, FastifyReply } from "fastify";
 import cors from "@fastify/cors";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { hashPassword, verifyPassword, crearSesion, requireAuth, requireRoles } from "./auth.js";
 import {
   infoCrearMultisig, infoPropuestaPago, infoAprobar, infoEjecutar,
-  leerPropuesta, leerMiembrosMultisig,
+  leerPropuesta, leerMiembrosMultisig, verificarTxDevnet,
 } from "./squads.js";
 
 const prisma = new PrismaClient();
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: {
+    redact: ["req.headers.authorization"],
+  },
+});
 
-await app.register(cors, { origin: true });
+// Manejador centralizado de errores para evitar fugas de información interna
+app.setErrorHandler((error: Error & { statusCode?: number }, req: FastifyRequest, reply: FastifyReply) => {
+  req.log.error(error);
+  const statusCode = error.statusCode && error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+  const mensaje = statusCode === 500 ? "Error interno del servidor" : error.message;
+  reply.code(statusCode).send({ error: mensaje });
+});
+
+// CORS restrictivo a orígenes conocidos en desarrollo / despliegue
+await app.register(cors, {
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+  ],
+  credentials: true,
+});
+
+// Rate Limiter en memoria para mitigar fuerza bruta y DoS sin dependencias pesadas
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+const cleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (entry.resetTime <= now) rateLimitMap.delete(key);
+  }
+}, 5 * 60 * 1000);
+if (typeof cleanupInterval === "object" && cleanupInterval !== null && "unref" in cleanupInterval) {
+  (cleanupInterval as { unref: () => void }).unref();
+}
+
+const createRateLimiter = (maxRequests: number, windowMs: number) => {
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const ip = req.ip || "unknown";
+    const route = req.routeOptions?.url || req.url;
+    const key = `${ip}:${route}`;
+    const now = Date.now();
+
+    let entry = rateLimitMap.get(key);
+    if (!entry || entry.resetTime <= now) {
+      entry = { count: 1, resetTime: now + windowMs };
+      rateLimitMap.set(key, entry);
+    } else {
+      entry.count++;
+      if (entry.count > maxRequests) {
+        const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+        reply.header("Retry-After", retryAfter);
+        return reply.code(429).send({
+          error: "Demasiadas solicitudes. Por favor intente más tarde.",
+          retryAfterSeconds: retryAfter,
+        });
+      }
+    }
+    reply.header("X-RateLimit-Limit", maxRequests);
+    reply.header("X-RateLimit-Remaining", Math.max(0, maxRequests - entry.count));
+  };
+};
+
+const rateLimitLogin = createRateLimiter(5, 60 * 1000); // máx 5 intentos de login por minuto
 
 const auth = requireAuth(prisma);
 const soloAdmin = requireRoles(prisma, ["ADMIN"]);
+const soloGestionProveedores = requireRoles(prisma, ["ADMIN", "JEFE"]);
 
 app.get("/health", async () => ({ ok: true, servicio: "logis-api", red: "devnet" }));
 
 // ---------- Auth (RF-01) ----------
 
-app.post("/api/auth/login", async (req, reply) => {
+app.post("/api/auth/login", { preHandler: rateLimitLogin }, async (req, reply) => {
   const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
   if (!email || !password) return reply.code(400).send({ error: "faltan email y password" });
 
-  const usuario = await prisma.usuario.findUnique({ where: { email } });
+  const cleanEmail = email.trim().toLowerCase();
+  const usuario = await prisma.usuario.findUnique({ where: { email: cleanEmail } });
   if (!usuario || !usuario.activo || !verifyPassword(password, usuario.passwordHash)) {
+    req.log.warn({ email: cleanEmail, ip: req.ip }, "Intento de inicio de sesión fallido");
     return reply.code(401).send({ error: "credenciales inválidas" });
   }
   const sesion = await crearSesion(prisma, usuario.id);
@@ -54,6 +126,8 @@ app.get("/api/usuarios", { preHandler: soloAdmin }, async (req) => {
   });
 });
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 app.post("/api/usuarios", { preHandler: soloAdmin }, async (req, reply) => {
   const { nombre, email, password, rol, walletPubkey } = (req.body ?? {}) as {
     nombre?: string; email?: string; password?: string; rol?: string; walletPubkey?: string;
@@ -61,14 +135,21 @@ app.post("/api/usuarios", { preHandler: soloAdmin }, async (req, reply) => {
   if (!nombre || !email || !password || !rol) {
     return reply.code(400).send({ error: "faltan campos: nombre, email, password, rol" });
   }
+  const cleanEmail = email.trim().toLowerCase();
+  if (!EMAIL_REGEX.test(cleanEmail)) {
+    return reply.code(400).send({ error: "formato de email inválido" });
+  }
+  if (password.length < 8) {
+    return reply.code(400).send({ error: "la contraseña debe tener al menos 8 caracteres" });
+  }
   if (!["ADMIN", "JEFE", "SUPERVISOR", "EMPLEADO"].includes(rol)) {
     return reply.code(400).send({ error: "rol inválido" });
   }
-  const existe = await prisma.usuario.findUnique({ where: { email } });
+  const existe = await prisma.usuario.findUnique({ where: { email: cleanEmail } });
   if (existe) return reply.code(409).send({ error: "ya existe un usuario con ese email" });
 
   const usuario = await prisma.usuario.create({
-    data: { empresaId: req.usuario!.empresaId, nombre, email, passwordHash: hashPassword(password), rol, walletPubkey },
+    data: { empresaId: req.usuario!.empresaId, nombre: nombre.trim(), email: cleanEmail, passwordHash: hashPassword(password), rol, walletPubkey },
   });
   const { passwordHash: _, ...resto } = usuario;
   return reply.code(201).send(resto);
@@ -78,6 +159,7 @@ app.post("/api/usuarios", { preHandler: soloAdmin }, async (req, reply) => {
 
 // Guarda la pubkey que el usuario usa para firmar aprobaciones en devnet.
 const PUBKEY_BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const SIG_BASE58 = /^[1-9A-HJ-NP-Za-km-z]{64,128}$/;
 
 app.put("/api/usuarios/me/wallet", { preHandler: auth }, async (req, reply) => {
   const { walletPubkey } = (req.body ?? {}) as { walletPubkey?: string };
@@ -114,17 +196,24 @@ app.get("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
   return proveedor;
 });
 
-app.post("/api/proveedores", { preHandler: auth }, async (req, reply) => {
+app.post("/api/proveedores", { preHandler: soloGestionProveedores }, async (req, reply) => {
   const body = (req.body ?? {}) as {
     nombre?: string; cuitOTaxId?: string; pais?: string; email?: string; walletUsdc?: string;
   };
   if (!body.nombre || !body.walletUsdc) {
     return reply.code(400).send({ error: "faltan campos: nombre, walletUsdc" });
   }
+  const cleanWallet = body.walletUsdc.trim();
+  if (!PUBKEY_BASE58.test(cleanWallet)) {
+    return reply.code(400).send({ error: "walletUsdc inválida (debe ser una dirección válida de Solana)" });
+  }
   const proveedor = await prisma.proveedor.create({
     data: {
-      nombre: body.nombre, walletUsdc: body.walletUsdc,
-      cuitOTaxId: body.cuitOTaxId, pais: body.pais, email: body.email,
+      nombre: body.nombre.trim(),
+      walletUsdc: cleanWallet,
+      cuitOTaxId: body.cuitOTaxId ? body.cuitOTaxId.trim() : null,
+      pais: body.pais ? body.pais.trim() : "AR",
+      email: body.email ? body.email.trim() : null,
       empresaId: req.usuario!.empresaId,
     },
   });
@@ -134,17 +223,45 @@ app.post("/api/proveedores", { preHandler: auth }, async (req, reply) => {
   return reply.code(201).send(proveedor);
 });
 
-app.patch("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
+app.patch("/api/proveedores/:id", { preHandler: soloGestionProveedores }, async (req, reply) => {
   const { id } = req.params as { id: string };
-  const body = (req.body ?? {}) as Partial<{
-    nombre: string; cuitOTaxId: string; pais: string; email: string; walletUsdc: string; activo: boolean;
-  }>;
+  const body = (req.body ?? {}) as Record<string, unknown>;
   const existe = await prisma.proveedor.findFirst({ where: { id, empresaId: req.usuario!.empresaId } });
   if (!existe) return reply.code(404).send({ error: "proveedor no encontrado" });
-  return prisma.proveedor.update({ where: { id }, data: body });
+
+  const dataToUpdate: {
+    nombre?: string;
+    cuitOTaxId?: string | null;
+    pais?: string;
+    email?: string | null;
+    walletUsdc?: string;
+    activo?: boolean;
+  } = {};
+
+  if (typeof body.nombre === "string" && body.nombre.trim()) dataToUpdate.nombre = body.nombre.trim();
+  if (typeof body.cuitOTaxId === "string") dataToUpdate.cuitOTaxId = body.cuitOTaxId.trim();
+  if (typeof body.pais === "string" && body.pais.trim()) dataToUpdate.pais = body.pais.trim();
+  if (typeof body.email === "string") dataToUpdate.email = body.email.trim();
+  if (typeof body.walletUsdc === "string") {
+    const cleanWallet = body.walletUsdc.trim();
+    if (!PUBKEY_BASE58.test(cleanWallet)) {
+      return reply.code(400).send({ error: "walletUsdc inválida (debe ser una dirección válida de Solana)" });
+    }
+    dataToUpdate.walletUsdc = cleanWallet;
+  }
+  if (typeof body.activo === "boolean") dataToUpdate.activo = body.activo;
+
+  const proveedor = await prisma.proveedor.update({
+    where: { id },
+    data: dataToUpdate,
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: req.usuario!.empresaId, entidad: "proveedor", entidadId: id, accion: "editada", actorId: req.usuario!.id },
+  });
+  return proveedor;
 });
 
-app.put("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
+app.put("/api/proveedores/:id", { preHandler: soloGestionProveedores }, async (req, reply) => {
   const { id } = req.params as { id: string };
   const body = (req.body ?? {}) as {
     nombre?: string; cuitOTaxId?: string; pais?: string; email?: string; walletUsdc?: string;
@@ -153,14 +270,24 @@ app.put("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
     where: { id, empresaId: req.usuario!.empresaId },
   });
   if (!existente) return reply.code(404).send({ error: "proveedor no encontrado" });
+
+  let walletUsdc = existente.walletUsdc;
+  if (body.walletUsdc) {
+    const cleanWallet = body.walletUsdc.trim();
+    if (!PUBKEY_BASE58.test(cleanWallet)) {
+      return reply.code(400).send({ error: "walletUsdc inválida" });
+    }
+    walletUsdc = cleanWallet;
+  }
+
   const proveedor = await prisma.proveedor.update({
     where: { id },
     data: {
-      nombre: body.nombre ?? existente.nombre,
-      cuitOTaxId: body.cuitOTaxId ?? existente.cuitOTaxId,
-      pais: body.pais ?? existente.pais,
-      email: body.email ?? existente.email,
-      walletUsdc: body.walletUsdc ?? existente.walletUsdc,
+      nombre: body.nombre ? body.nombre.trim() : existente.nombre,
+      cuitOTaxId: body.cuitOTaxId !== undefined ? (body.cuitOTaxId ? body.cuitOTaxId.trim() : null) : existente.cuitOTaxId,
+      pais: body.pais ? body.pais.trim() : existente.pais,
+      email: body.email !== undefined ? (body.email ? body.email.trim() : null) : existente.email,
+      walletUsdc,
     },
   });
   await prisma.auditLog.create({
@@ -169,7 +296,7 @@ app.put("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
   return proveedor;
 });
 
-app.delete("/api/proveedores/:id", { preHandler: auth }, async (req, reply) => {
+app.delete("/api/proveedores/:id", { preHandler: soloGestionProveedores }, async (req, reply) => {
   const { id } = req.params as { id: string };
   const existe = await prisma.proveedor.findFirst({ where: { id, empresaId: req.usuario!.empresaId } });
   if (!existe) return reply.code(404).send({ error: "proveedor no encontrado" });
@@ -236,8 +363,10 @@ app.post("/api/facturas", { preHandler: auth }, async (req, reply) => {
     proveedorId?: string; ordenCompraId?: string; numero?: string;
     monto?: number; origen?: string;
   };
-  if (!body.proveedorId || !body.numero || !body.monto) {
-    return reply.code(400).send({ error: "faltan campos: proveedorId, numero, monto" });
+  const numeroLimpio = String(body.numero ?? "").trim();
+  const monto = Number(body.monto);
+  if (!body.proveedorId || !numeroLimpio || !monto || monto <= 0 || isNaN(monto)) {
+    return reply.code(400).send({ error: "faltan campos válidos: proveedorId, numero, monto > 0" });
   }
   const empresaId = req.usuario!.empresaId;
   const proveedor = await prisma.proveedor.findFirst({
@@ -252,7 +381,7 @@ app.post("/api/facturas", { preHandler: auth }, async (req, reply) => {
   }
 
   const duplicada = await prisma.factura.findFirst({
-    where: { empresaId, proveedorId: body.proveedorId, numero: body.numero },
+    where: { empresaId, proveedorId: body.proveedorId, numero: numeroLimpio },
   });
   if (duplicada) return reply.code(409).send({ error: "factura duplicada: ese número ya existe para el proveedor" });
 
@@ -261,9 +390,9 @@ app.post("/api/facturas", { preHandler: auth }, async (req, reply) => {
       empresaId,
       proveedorId: body.proveedorId,
       ordenCompraId: body.ordenCompraId,
-      numero: body.numero,
-      monto: body.monto,
-      hashSha256: hashFactura({ empresaId, proveedorId: body.proveedorId, numero: body.numero, monto: body.monto }),
+      numero: numeroLimpio,
+      monto,
+      hashSha256: hashFactura({ empresaId, proveedorId: body.proveedorId, numero: numeroLimpio, monto }),
       origen: body.origen ?? "MANUAL",
       cargadaPorId: req.usuario!.id,
     },
@@ -477,18 +606,29 @@ app.post("/api/facturas/:id/aprobar-info", { preHandler: soloFirmantes }, async 
 app.post("/api/facturas/:id/aprobar-confirmar", { preHandler: soloFirmantes }, async (req, reply) => {
   const { id } = req.params as { id: string };
   const { txSignature } = (req.body ?? {}) as { txSignature?: string };
-  if (!txSignature) return reply.code(400).send({ error: "falta txSignature" });
+  if (!txSignature || !SIG_BASE58.test(txSignature.trim())) {
+    return reply.code(400).send({ error: "falta txSignature o formato inválido (debe ser base58 válido)" });
+  }
+  const cleanSig = txSignature.trim();
   const factura = await prisma.factura.findFirst({
     where: { id, empresaId: req.usuario!.empresaId },
     include: { propuesta: true },
   });
   if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
 
+  // Validar que el usuario sea miembro legítimo del multisig de la empresa
+  await walletDeMiembro(req, factura.propuesta.multisigAddress);
+
+  const yaFirmo = await prisma.firma.findUnique({
+    where: { propuestaId_usuarioId: { propuestaId: factura.propuesta.id, usuarioId: req.usuario!.id } },
+  });
+  if (yaFirmo) return reply.code(409).send({ error: "ya registraste tu firma para esta propuesta" });
+
   const firma = await prisma.firma.create({
-    data: { propuestaId: factura.propuesta.id, usuarioId: req.usuario!.id, txSignature },
+    data: { propuestaId: factura.propuesta.id, usuarioId: req.usuario!.id, txSignature: cleanSig },
   });
   await prisma.auditLog.create({
-    data: { empresaId: factura.empresaId, entidad: "propuesta", entidadId: factura.propuesta.id, accion: "firmada", actorId: req.usuario!.id, txSignature },
+    data: { empresaId: factura.empresaId, entidad: "propuesta", entidadId: factura.propuesta.id, accion: "firmada", actorId: req.usuario!.id, txSignature: cleanSig },
   });
 
   // Estado real on-chain: ¿llegó al umbral?
@@ -547,12 +687,25 @@ app.post("/api/facturas/:id/ejecutar-info", { preHandler: soloFirmantes }, async
 app.post("/api/facturas/:id/ejecutar-confirmar", { preHandler: soloFirmantes }, async (req, reply) => {
   const { id } = req.params as { id: string };
   const { txSignature } = (req.body ?? {}) as { txSignature?: string };
-  if (!txSignature) return reply.code(400).send({ error: "falta txSignature" });
+  if (!txSignature || !SIG_BASE58.test(txSignature.trim())) {
+    return reply.code(400).send({ error: "falta txSignature o formato inválido (debe ser base58 válido)" });
+  }
+  const cleanSig = txSignature.trim();
   const factura = await prisma.factura.findFirst({
     where: { id, empresaId: req.usuario!.empresaId },
     include: { proveedor: true, propuesta: true },
   });
   if (!factura?.propuesta) return reply.code(404).send({ error: "la factura no tiene propuesta" });
+
+  if (factura.estado === "PAGADA" || factura.propuesta.estado === "EJECUTADA") {
+    return reply.code(409).send({ error: "la factura ya fue pagada y ejecutada" });
+  }
+
+  // Verificar estado de la transacción on-chain en devnet
+  const verificacionTx = await verificarTxDevnet(cleanSig);
+  if (!verificacionTx.ok) {
+    return reply.code(400).send({ error: verificacionTx.motivo ?? "la transacción no fue confirmada exitosamente en devnet" });
+  }
 
   const pago = await prisma.pago.create({
     data: {
@@ -560,7 +713,7 @@ app.post("/api/facturas/:id/ejecutar-confirmar", { preHandler: soloFirmantes }, 
       propuestaId: factura.propuesta.id,
       montoUsdc: factura.monto,
       destinoWallet: factura.proveedor.walletUsdc,
-      txSignature,
+      txSignature: cleanSig,
       memo: `logis:factura:${factura.hashSha256}`,
       estado: "CONFIRMADO",
       confirmedAt: new Date(),
@@ -569,7 +722,7 @@ app.post("/api/facturas/:id/ejecutar-confirmar", { preHandler: soloFirmantes }, 
   await prisma.propuestaMultisig.update({ where: { id: factura.propuesta.id }, data: { estado: "EJECUTADA" } });
   await prisma.factura.update({ where: { id }, data: { estado: "PAGADA" } });
   await prisma.auditLog.create({
-    data: { empresaId: factura.empresaId, entidad: "pago", entidadId: pago.id, accion: "pagada", actorId: req.usuario!.id, txSignature },
+    data: { empresaId: factura.empresaId, entidad: "pago", entidadId: pago.id, accion: "pagada", actorId: req.usuario!.id, txSignature: cleanSig },
   });
   return reply.code(201).send(pago);
 });

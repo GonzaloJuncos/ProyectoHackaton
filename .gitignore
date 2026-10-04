@@ -2,10 +2,15 @@ node_modules/
 dist/
 *.local
 .env
+.env*
+*.env
+*.env.*
 
 # SQLite (datos de demo, se regeneran con db:push + db:seed)
-apps/api/prisma/dev.db
-apps/api/prisma/dev.db-journal
+*.db
+*.db-journal
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
 
 # OS / editor
 Thumbs.db

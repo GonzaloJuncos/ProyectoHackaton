@@ -3,6 +3,7 @@
 import React from "react";
 import { useApp } from "@/context/AppContext";
 import { TabSeccion } from "@/lib/types";
+import LogisLogo from "@/components/LogisLogo";
 
 interface NavItem {
   id: TabSeccion;
@@ -75,16 +76,8 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 flex w-56 flex-col border-r border-[#153f47] bg-[#072127] text-white z-30 select-none">
       {/* Logo superior */}
-      <div className="flex items-center gap-2.5 px-6 py-6">
-        <svg className="h-8 w-8 text-[#3fd0a8]" viewBox="0 0 32 32" fill="none">
-          <path d="M7 16L16 7L21 12L12 21L7 16Z" fill="#3fd0a8" />
-          <path d="M16 25L25 16L20 11L11 20L16 25Z" fill="#209880" />
-          <path d="M12 21L16 25L25 16L21 12L12 21Z" fill="#25b497" />
-          <path d="M7 16L12 21L16 17L11 12L7 16Z" fill="#5eead4" />
-        </svg>
-        <span className="text-2xl font-bold tracking-tight text-white font-sans">
-          Logis
-        </span>
+      <div className="flex items-center px-6 py-6">
+        <LogisLogo className="h-7 w-auto" theme="dark" />
       </div>
 
       {/* Menú de Navegación */}

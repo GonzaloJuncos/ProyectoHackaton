@@ -14,7 +14,9 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <nav className="topnav">
-        <Link to="/" className="brand">Logis</Link>
+        <Link to="/" className="brand">
+          <img src="/logo-logis.svg" alt="Logis" style={{ height: "24px", width: "auto", display: "inline-block", verticalAlign: "middle" }} />
+        </Link>
         <div className="nav-links">
           <Link to="/">Conciliación</Link>
           <Link to="/facturas">Facturas</Link>

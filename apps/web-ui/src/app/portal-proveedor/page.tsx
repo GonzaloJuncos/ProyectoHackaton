@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FACTURAS_MOCK, PROVEEDORES_MOCK, TXS_MOCK } from "@/lib/mock";
 import { Proveedor } from "@/lib/types";
+import LogisLogo from "@/components/LogisLogo";
 
 export default function PortalProveedor() {
   const [proveedor, setProveedor] = useState<Proveedor | null>(null);
@@ -24,7 +25,10 @@ export default function PortalProveedor() {
     <div className="min-h-screen bg-fondo">
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <span className="text-lg font-bold text-tinta">Logis <span className="text-sm font-normal text-tinta/50">· Portal de proveedor</span></span>
+          <div className="flex items-center gap-2">
+            <LogisLogo className="h-6 w-auto" />
+            <span className="text-sm font-normal text-tinta/50">· Portal de proveedor</span>
+          </div>
           <a href="/login" className="text-sm text-enlace hover:underline">Salir</a>
         </div>
       </header>

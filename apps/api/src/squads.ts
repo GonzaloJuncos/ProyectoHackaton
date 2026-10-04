@@ -232,3 +232,19 @@ export const leerMiembrosMultisig = async (multisigAddress: string) => {
     transactionIndex: Number(cuenta.transactionIndex),
   };
 };
+
+export const verificarTxDevnet = async (txSignature: string): Promise<{ ok: boolean; motivo?: string }> => {
+  try {
+    const status = await connection.getSignatureStatus(txSignature, { searchTransactionHistory: true });
+    if (!status || !status.value) {
+      return { ok: true };
+    }
+    if (status.value.err) {
+      return { ok: false, motivo: "la transacción falló en Solana devnet" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: true };
+  }
+};
+

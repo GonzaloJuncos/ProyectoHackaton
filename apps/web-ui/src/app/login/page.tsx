@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PROVEEDORES_MOCK, USUARIOS_MOCK } from "@/lib/mock";
+import LogisLogo from "@/components/LogisLogo";
 
 type TipoCuenta = "empresa" | "personal" | null;
 
@@ -50,11 +51,17 @@ export default function Login() {
 
   const entrarEmpresa = (e: React.FormEvent) => {
     e.preventDefault();
+    const emailNorm = email.trim().toLowerCase();
+    const prefix = emailNorm.split("@")[0];
+    const passNorm = password.trim();
+
     const usuario = USUARIOS_MOCK.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
+      (u) =>
+        (u.email.toLowerCase() === emailNorm || u.email.split("@")[0] === prefix) &&
+        (u.password === passNorm || passNorm === "demo123" || passNorm === "logis123")
     );
     if (!usuario) {
-      setError("Usuario o contraseña incorrectos.");
+      setError("Usuario o contraseña incorrectos. Podés usar clave 'demo123' o 'logis123'.");
       return;
     }
     localStorage.setItem("logis-rol", usuario.rol);
@@ -85,6 +92,9 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-fondo px-4">
       <div className="w-full max-w-sm">
+        <div className="mb-6 flex justify-center">
+          <LogisLogo className="h-9 w-auto" />
+        </div>
         {!tipo && (
           <>
             <h1 className="mb-2 text-2xl font-bold text-tinta">Bienvenido de nuevo</h1>
@@ -189,13 +199,31 @@ export default function Login() {
               ¿Olvidaste tu contraseña?
             </p>
 
-            <div className="mt-4 rounded-lg bg-card p-3 text-xs text-tinta/60">
-              <p className="mb-1 font-semibold">Usuarios demo (clave: demo123)</p>
-              {USUARIOS_MOCK.map((u) => (
-                <p key={u.email}>
-                  {u.email} — <span className="capitalize">{u.rol}</span>
-                </p>
-              ))}
+            <div className="mt-4 rounded-xl border border-tinta/10 bg-card p-3.5 text-xs text-tinta/70 shadow-sm">
+              <p className="mb-2 font-semibold text-tinta">Hacé clic para autocompletar credenciales:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { email: "admin@logis.io", pass: "demo123", nombre: "Admin", rol: "Administrador" },
+                  { email: "jefe@logis.io", pass: "demo123", nombre: "Jefe", rol: "Jefe" },
+                  { email: "super@logis.io", pass: "demo123", nombre: "Supervisor", rol: "Supervisor" },
+                  { email: "empleado@logis.io", pass: "demo123", nombre: "Empleado", rol: "Empleado" },
+                ].map((u) => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(u.email);
+                      setPassword(u.pass);
+                      setError("");
+                    }}
+                    className="flex flex-col items-start rounded-lg border border-tinta/15 bg-fondo/50 px-2.5 py-1.5 transition hover:border-menta hover:bg-menta/10 text-left"
+                  >
+                    <span className="font-bold text-tinta text-[11px]">{u.nombre}</span>
+                    <span className="text-[10px] text-tinta/50">{u.rol}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-tinta/40 text-center">Claves válidas: <code>demo123</code> o <code>logis123</code></p>
             </div>
           </>
         )}

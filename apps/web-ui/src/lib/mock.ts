@@ -5,6 +5,11 @@ export const USUARIOS_MOCK: Usuario[] = [
   { email: "jefe@logis.io", password: "demo123", nombre: "Gonzalo Juncos", rol: "jefe" },
   { email: "super@logis.io", password: "demo123", nombre: "Maxi Pérez", rol: "supervisor" },
   { email: "empleado@logis.io", password: "demo123", nombre: "Luz García", rol: "empleado" },
+  // Compatibilidad con seed de backend / logis.demo
+  { email: "admin@logis.demo", password: "logis123", nombre: "Admin Demo", rol: "administrador" },
+  { email: "jefe@logis.demo", password: "logis123", nombre: "Jefe Demo", rol: "jefe" },
+  { email: "supervisor@logis.demo", password: "logis123", nombre: "Supervisor Demo", rol: "supervisor" },
+  { email: "empleado@logis.demo", password: "logis123", nombre: "Empleado Demo", rol: "empleado" },
 ];
 
 export const PROVEEDORES_MOCK: Proveedor[] = [
