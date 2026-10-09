@@ -84,3 +84,13 @@ code { font-size: 0.8rem; color: #a5d6ff; }
 
 .form-proveedor { max-width: none; margin-top: 1rem; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2rem; }
+
+/* Panel del agente verificador (RF-06) */
+.agente-panel { max-width: none; margin-top: 1rem; }
+.agente-panel h3 { font-size: 1rem; margin-bottom: 0.6rem; }
+.agente-panel ul { list-style: none; padding: 0; }
+.agente-checks li { padding: 0.25rem 0; font-size: 0.9rem; }
+.check-ok { color: #3fb950; }
+.check-falla { color: #ff7b72; }
+.agente-ok { border-color: #3fb95066; }
+.agente-falla { border-color: #f8514966; }

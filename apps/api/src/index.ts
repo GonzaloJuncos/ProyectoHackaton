@@ -346,6 +346,7 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
       proveedor: { select: { nombre: true } },
       ordenCompra: { select: { numero: true } },
       propuesta: { include: { firmas: true } },
+      verificaciones: { orderBy: { createdAt: "desc" }, take: 1 },
       pago: true,
     },
     orderBy: { createdAt: "desc" },
@@ -355,6 +356,7 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
     proveedorNombre: f.proveedor.nombre,
     ocNumero: f.ordenCompra?.numero ?? null,
     firmasCount: f.propuesta?.firmas.length ?? 0,
+    verificacion: f.verificaciones[0] ?? null,
   }));
 });
 
@@ -668,6 +670,9 @@ app.post("/api/facturas/:id/ejecutar-info", { preHandler: soloFirmantes }, async
   const ok = Object.values(checks).every(Boolean);
   await prisma.verificacion.create({
     data: { facturaId: id, resultado: ok ? "OK" : "RECHAZADA", checks, detalle: ok ? null : "la factura no pasó la verificación" },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: factura.empresaId, entidad: "factura", entidadId: id, accion: "verificada", actorId: null, detalle: checks },
   });
   if (!ok) {
     await prisma.factura.update({ where: { id }, data: { estado: "VERIFICACION_FALLIDA" } });

@@ -99,6 +99,15 @@ export interface ChecksVerificacion {
   sinDuplicados: boolean;
 }
 
+export interface Verificacion {
+  id: string;
+  facturaId: string;
+  resultado: ResultadoVerificacion;
+  checks: ChecksVerificacion;
+  detalle: string | null;
+  createdAt: string;
+}
+
 export interface Pago {
   id: string;
   facturaId: string;
@@ -189,5 +198,6 @@ export interface CrearOrdenCompraBody {
 export interface FacturaConEstado extends Factura {
   proveedorNombre: string;
   firmasCount: number;
+  verificacion?: Verificacion | null;
   pago?: Pago | null;
 }

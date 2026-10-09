@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Proveedor, OrdenCompra, LoteFacturasResultado, EstadoFactura } from "@logis/shared";
 import { useConnectedWallet } from "@solana/kit-plugin-wallet/react";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import { client } from "../solana/client";
 import { enviarInstrucciones, type IxSerializada } from "../solana/ix";
+
+interface ChecksAgente {
+  ocCoincide: boolean;
+  proveedorRegistrado: boolean;
+  montoOk: boolean;
+  sinDuplicados: boolean;
+}
+
+interface Verificacion {
+  id: string;
+  resultado: string;
+  checks: ChecksAgente;
+  detalle: string | null;
+  createdAt: string;
+}
 
 interface FacturaListada {
   id: string;
@@ -18,9 +33,17 @@ interface FacturaListada {
   ocNumero: string | null;
   firmasCount: number;
   propuesta?: { id: string; proposalIndex: number; firmas: { usuarioId: string }[] } | null;
+  verificacion?: Verificacion | null;
   pago?: { txSignature: string | null } | null;
   createdAt: string;
 }
+
+const CHECK_LABEL: Record<keyof ChecksAgente, string> = {
+  ocCoincide: "coincide con la orden de compra",
+  proveedorRegistrado: "proveedor registrado y activo",
+  montoOk: "monto válido",
+  sinDuplicados: "sin duplicados",
+};
 
 interface EmpresaInfo {
   id: string;
@@ -62,6 +85,7 @@ export default function Facturas() {
   const [ocupado, setOcupado] = useState<string | null>(null); // facturaId/acción en curso
   const [aviso, setAviso] = useState<string | null>(null);
   const [csvInfo, setCsvInfo] = useState<string | null>(null);
+  const [agente, setAgente] = useState<{ numero: string; checks: ChecksAgente; ok: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const cargar = async () => {
@@ -137,8 +161,18 @@ export default function Facturas() {
 
   const ejecutarPago = (f: FacturaListada) =>
     ejecutar(`eje-${f.id}`, async () => {
-      const info = await api<{ instrucciones: IxSerializada[] }>(
-        `/facturas/${f.id}/ejecutar-info`, { method: "POST", body: "{}" });
+      setAgente(null);
+      let info: { instrucciones: IxSerializada[]; checks: ChecksAgente };
+      try {
+        info = await api(`/facturas/${f.id}/ejecutar-info`, { method: "POST", body: "{}" });
+      } catch (err) {
+        if (err instanceof ApiError && err.body.checks) {
+          setAgente({ numero: f.numero, checks: err.body.checks as unknown as ChecksAgente, ok: false });
+        }
+        throw err;
+      }
+      // El agente aprobó: mostrar su checklist mientras la wallet firma la ejecución.
+      setAgente({ numero: f.numero, checks: info.checks, ok: true });
       const sig = await enviarInstrucciones(client, info.instrucciones);
       await api(`/facturas/${f.id}/ejecutar-confirmar`, {
         method: "POST",
@@ -269,6 +303,24 @@ export default function Facturas() {
       {aviso && <p className="ok">{aviso}</p>}
       {error && !mostrarForm && <p className="error">{error}</p>}
 
+      {agente && (
+        <div className={`card agente-panel ${agente.ok ? "agente-ok" : "agente-falla"}`}>
+          <h3>El agente verificó la factura {agente.numero}</h3>
+          <ul className="agente-checks">
+            {(Object.keys(CHECK_LABEL) as (keyof ChecksAgente)[]).map((k) => (
+              <li key={k} className={agente.checks[k] ? "check-ok" : "check-falla"}>
+                {agente.checks[k] ? "✓" : "✗"} {CHECK_LABEL[k]}
+              </li>
+            ))}
+          </ul>
+          <p className="muted small">
+            {agente.ok
+              ? "Verificación OK — firmá la ejecución del pago en tu wallet."
+              : "Verificación rechazada — el pago NO se ejecuta. Revisá la factura."}
+          </p>
+        </div>
+      )}
+
       {empresa && !empresa.multisigAddress && (
         <div className="card aviso-multisig">
           <strong>Multisig no configurado.</strong>{" "}
@@ -301,6 +353,7 @@ export default function Facturas() {
             <th>Estado</th>
             <th>Firmas</th>
             <th>Hash</th>
+            <th>Agente</th>
             <th>Origen</th>
             <th></th>
           </tr>
@@ -315,6 +368,20 @@ export default function Facturas() {
               <td><span className={`estado estado-${f.estado.toLowerCase()}`}>{ESTADO_LABEL[f.estado] ?? f.estado}</span></td>
               <td>{f.firmasCount}/2</td>
               <td><code title={f.hashSha256}>{f.hashSha256.slice(0, 8)}…</code></td>
+              <td>
+                {f.verificacion ? (
+                  <span
+                    className={`estado ${f.verificacion.resultado === "OK" ? "estado-pagada" : "estado-rechazada"}`}
+                    title={Object.entries(f.verificacion.checks)
+                      .map(([k, v]) => `${v ? "✓" : "✗"} ${CHECK_LABEL[k as keyof ChecksAgente] ?? k}`)
+                      .join("\n")}
+                  >
+                    {f.verificacion.resultado === "OK" ? "✓ ok" : "✗ rechazada"}
+                  </span>
+                ) : (
+                  <span className="muted">—</span>
+                )}
+              </td>
               <td className="muted">{f.origen.toLowerCase()}</td>
               <td>
                 {f.estado === "CARGADA" && empresa?.multisigAddress && esMiembro && (
@@ -346,7 +413,7 @@ export default function Facturas() {
             </tr>
           ))}
           {facturas.length === 0 && (
-            <tr><td colSpan={9} className="muted">Todavía no hay facturas cargadas.</td></tr>
+            <tr><td colSpan={10} className="muted">Todavía no hay facturas cargadas.</td></tr>
           )}
         </tbody>
       </table>
