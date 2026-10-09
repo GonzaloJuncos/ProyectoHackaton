@@ -44,9 +44,11 @@
 | Rol | Puede |
 |---|---|
 | Administrador | Gestionar usuarios y proveedores, configurar la empresa, **firmar aprobaciones** |
-| Jefe | Revisar facturas y **firmar aprobaciones** |
-| Supervisor | Revisar facturas y **firmar aprobaciones** |
+| Jefe | Revisar facturas, editar supervisores y **firmar aprobaciones** |
+| Supervisor | Revisar facturas, editar empleados y **firmar aprobaciones** |
 | Empleado | Cargar facturas y proveedores; no aprueba pagos |
+
+> **Funciones vitrina para el pitch** (lo que el jurado debe ver funcionando): RF-05 multisig, **RF-06 agente** (diferenciador #1), RF-07 hash de factura on-chain, RF-08 dashboard de conciliación + UX invisible (Privy). Ver `proyecto/04-plan.md` → "Prioridades del pitch".
 
 ## 4. Requerimientos no funcionales
 
