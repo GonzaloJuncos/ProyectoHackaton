@@ -28,7 +28,7 @@ export default function Usuarios() {
   const [form, setForm] = useState(FORM_VACIO);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
-  const [edit, setEdit] = useState<{ nombre: string; rol: Rol }>({ nombre: "", rol: "EMPLEADO" });
+  const [edit, setEdit] = useState<{ nombre: string; rol: Rol; walletPubkey: string }>({ nombre: "", rol: "EMPLEADO", walletPubkey: "" });
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -62,7 +62,7 @@ export default function Usuarios() {
     try {
       await api(`/usuarios/${u.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ nombre: edit.nombre, rol: edit.rol }),
+        body: JSON.stringify({ nombre: edit.nombre, rol: edit.rol, walletPubkey: edit.walletPubkey || null }),
       });
       setEditando(null);
       await cargar();
@@ -162,7 +162,19 @@ export default function Usuarios() {
                     <td><span className="estado estado-cargada">{ROL_LABEL[u.rol] ?? u.rol}</span></td>
                   </>
                 )}
-                <td>{u.walletPubkey ? <code title={u.walletPubkey}>{u.walletPubkey.slice(0, 10)}…</code> : <span className="muted">sin vincular</span>}</td>
+                <td>
+                  {editando === u.id ? (
+                    <input
+                      value={edit.walletPubkey}
+                      placeholder="dirección devnet"
+                      onChange={(e) => setEdit({ ...edit, walletPubkey: e.target.value })}
+                    />
+                  ) : u.walletPubkey ? (
+                    <code title={u.walletPubkey}>{u.walletPubkey.slice(0, 10)}…</code>
+                  ) : (
+                    <span className="muted">sin vincular</span>
+                  )}
+                </td>
                 <td>
                   <span className={`estado ${u.activo ? "estado-aprobada" : "estado-rechazada"}`}>
                     {u.activo ? "activo" : "inactivo"}
@@ -171,7 +183,7 @@ export default function Usuarios() {
                 <td>
                   {editable && editando !== u.id && (
                     <>
-                      <button className="link" onClick={() => { setEditando(u.id); setEdit({ nombre: u.nombre, rol: u.rol }); }}>
+                      <button className="link" onClick={() => { setEditando(u.id); setEdit({ nombre: u.nombre, rol: u.rol, walletPubkey: u.walletPubkey ?? "" }); }}>
                         editar
                       </button>
                       {" · "}

@@ -5,6 +5,7 @@ import { api, ApiError } from "../api";
 import { useAuth } from "../auth";
 import { client } from "../solana/client";
 import { enviarInstrucciones, type IxSerializada } from "../solana/ix";
+import { useSignerManual } from "../solana/manual";
 
 interface ChecksAgente {
   ocCoincide: boolean;
@@ -30,6 +31,7 @@ interface FacturaListada {
   hashSha256: string;
   origen: string;
   proveedorNombre: string;
+  proveedorWallet: string;
   ocNumero: string | null;
   firmasCount: number;
   propuesta?: { id: string; proposalIndex: number; firmas: { usuarioId: string }[] } | null;
@@ -74,6 +76,7 @@ const parseCsv = (texto: string) =>
 export default function Facturas() {
   const { usuario } = useAuth();
   const connected = useConnectedWallet(client);
+  const signerManual = useSignerManual();
   const [facturas, setFacturas] = useState<FacturaListada[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [ocs, setOcs] = useState<(OrdenCompra & { proveedor?: { nombre: string } })[]>([]);
@@ -107,8 +110,25 @@ export default function Facturas() {
     cargar().catch((e) => setError(e.message));
   }, []);
 
-  const miWallet = connected?.account.address ?? null;
+  // La wallet del usuario: Phantom conectada, o clave devnet importada, o la vinculada a mano.
+  const miWallet = connected?.account.address ?? signerManual?.address ?? usuario?.walletPubkey ?? null;
   const esMiembro = Boolean(miWallet && empresa?.firmantes.some((f) => f.walletPubkey === miWallet));
+
+  /**
+   * Devuelve el firmante a usar. Con Phantom, la wallet muestra su propio popup.
+   * Con clave manual (sin extensión), pedimos confirmación explícita mostrando
+   * el detalle de la operación (RNF-03: destino, monto, token y red).
+   */
+  const firmante = (detalle: string) => {
+    if (connected) return null;
+    if (!signerManual) {
+      throw new Error("conectá Phantom o importá tu clave devnet en la barra lateral para firmar");
+    }
+    if (!confirm(`${detalle}\n\n¿Firmar y enviar a Solana devnet con tu clave importada?`)) {
+      throw new Error("firma cancelada por el usuario");
+    }
+    return signerManual;
+  };
 
   /** Pide instrucciones a la API, las firma con la wallet y confirma. */
   const ejecutar = async (clave: string, fn: () => Promise<void>) => {
@@ -127,9 +147,10 @@ export default function Facturas() {
 
   const crearMultisig = () =>
     ejecutar("multisig", async () => {
+      const s = firmante(`Crear el multisig 2/3 de la empresa\nMiembros: firmantes con wallet vinculada\nRed: devnet`);
       const info = await api<{ multisigAddress: string; instrucciones: IxSerializada[] }>(
         "/empresa/multisig/crear-info", { method: "POST", body: "{}" });
-      const sig = await enviarInstrucciones(client, info.instrucciones);
+      const sig = await enviarInstrucciones(client, info.instrucciones, s);
       await api("/empresa/multisig/confirmar", {
         method: "POST",
         body: JSON.stringify({ multisigAddress: info.multisigAddress, txSignature: sig }),
@@ -139,9 +160,10 @@ export default function Facturas() {
 
   const proponer = (f: FacturaListada) =>
     ejecutar(`prop-${f.id}`, async () => {
+      const s = firmante(`Proponer pago de factura ${f.numero}\nDestino: ${f.proveedorWallet}\nMonto: ${f.monto} USDC\nRed: devnet`);
       const info = await api<{ transactionIndex: number; instrucciones: IxSerializada[] }>(
         `/facturas/${f.id}/propuesta-info`, { method: "POST", body: "{}" });
-      const sig = await enviarInstrucciones(client, info.instrucciones);
+      const sig = await enviarInstrucciones(client, info.instrucciones, s);
       await api(`/facturas/${f.id}/propuesta-confirmar`, {
         method: "POST",
         body: JSON.stringify({ transactionIndex: info.transactionIndex, txSignature: sig }),
@@ -151,9 +173,10 @@ export default function Facturas() {
 
   const aprobar = (f: FacturaListada) =>
     ejecutar(`apr-${f.id}`, async () => {
+      const s = firmante(`Aprobar (firmar) la propuesta de pago de ${f.numero}\nDestino: ${f.proveedorWallet}\nMonto: ${f.monto} USDC\nRed: devnet`);
       const info = await api<{ instrucciones: IxSerializada[] }>(
         `/facturas/${f.id}/aprobar-info`, { method: "POST", body: "{}" });
-      const sig = await enviarInstrucciones(client, info.instrucciones);
+      const sig = await enviarInstrucciones(client, info.instrucciones, s);
       const res = await api<{ onchain: { aprobada: boolean } }>(`/facturas/${f.id}/aprobar-confirmar`, {
         method: "POST",
         body: JSON.stringify({ txSignature: sig }),
@@ -175,7 +198,8 @@ export default function Facturas() {
       }
       // El agente aprobó: mostrar su checklist mientras la wallet firma la ejecución.
       setAgente({ numero: f.numero, checks: info.checks, ok: true });
-      const sig = await enviarInstrucciones(client, info.instrucciones);
+      const s = firmante(`Ejecutar el pago aprobado de ${f.numero}\nDestino: ${f.proveedorWallet}\nMonto: ${f.monto} USDC\nRed: devnet`);
+      const sig = await enviarInstrucciones(client, info.instrucciones, s);
       await api(`/facturas/${f.id}/ejecutar-confirmar`, {
         method: "POST",
         body: JSON.stringify({ txSignature: sig }),

@@ -390,7 +390,7 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
   const facturas = await prisma.factura.findMany({
     where: { empresaId: req.usuario!.empresaId },
     include: {
-      proveedor: { select: { nombre: true } },
+      proveedor: { select: { nombre: true, walletUsdc: true } },
       ordenCompra: { select: { numero: true } },
       propuesta: { include: { firmas: true } },
       verificaciones: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -401,6 +401,7 @@ app.get("/api/facturas", { preHandler: auth }, async (req) => {
   return facturas.map((f) => ({
     ...f,
     proveedorNombre: f.proveedor.nombre,
+    proveedorWallet: f.proveedor.walletUsdc,
     ocNumero: f.ordenCompra?.numero ?? null,
     firmasCount: f.propuesta?.firmas.length ?? 0,
     verificacion: f.verificaciones[0] ?? null,

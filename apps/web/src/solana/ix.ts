@@ -1,5 +1,6 @@
-import { AccountRole, address, type Instruction } from "@solana/kit";
+import { AccountRole, address, type Instruction, type TransactionSigner } from "@solana/kit";
 import type { AppClient } from "./client";
+import { enviarConSignerManual } from "./manual";
 
 // Formato que devuelve la API (instrucción serializada).
 export interface IxSerializada {
@@ -22,11 +23,17 @@ const aKitIx = (ix: IxSerializada): Instruction => ({
 });
 
 /**
- * Toma las instrucciones serializadas de la API, las firma con la wallet
- * conectada y las envía a devnet. Devuelve la signature.
+ * Toma las instrucciones serializadas de la API, las firma y las envía a devnet.
+ * Si hay `signerManual` (clave devnet importada), firma con esa; si no, usa la
+ * wallet conectada (Phantom). Devuelve la signature.
  */
-export const enviarInstrucciones = async (client: AppClient, ixs: IxSerializada[]) => {
+export const enviarInstrucciones = async (
+  client: AppClient,
+  ixs: IxSerializada[],
+  signerManual?: TransactionSigner | null
+) => {
   const kitIxs = ixs.map(aKitIx);
+  if (signerManual) return enviarConSignerManual(kitIxs, signerManual);
   const result = await client.sendTransaction(kitIxs);
   return result.context.signature;
 };
