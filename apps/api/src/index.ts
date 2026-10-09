@@ -85,6 +85,16 @@ const rateLimitLogin = createRateLimiter(5, 60 * 1000); // máx 5 intentos de lo
 const auth = requireAuth(prisma);
 const soloAdmin = requireRoles(prisma, ["ADMIN"]);
 const soloGestionProveedores = requireRoles(prisma, ["ADMIN", "JEFE"]);
+const soloGestionUsuarios = requireRoles(prisma, ["ADMIN", "JEFE", "SUPERVISOR"]);
+
+// Jerarquía de edición de usuarios (docs/requerimientos.md §Roles):
+// admin edita a todos, jefe edita supervisores, supervisor edita empleados.
+const ROLES_ALCANZABLES: Record<string, string[]> = {
+  ADMIN: ["ADMIN", "JEFE", "SUPERVISOR", "EMPLEADO"],
+  JEFE: ["SUPERVISOR"],
+  SUPERVISOR: ["EMPLEADO"],
+  EMPLEADO: [],
+};
 
 app.get("/health", async () => ({ ok: true, servicio: "logis-api", red: "devnet" }));
 
@@ -118,7 +128,7 @@ app.get("/api/auth/me", { preHandler: auth }, async (req) => {
 
 // ---------- Usuarios (RF-01, solo ADMIN) ----------
 
-app.get("/api/usuarios", { preHandler: soloAdmin }, async (req) => {
+app.get("/api/usuarios", { preHandler: soloGestionUsuarios }, async (req) => {
   return prisma.usuario.findMany({
     where: { empresaId: req.usuario!.empresaId },
     select: { id: true, nombre: true, email: true, rol: true, walletPubkey: true, activo: true },
@@ -153,6 +163,41 @@ app.post("/api/usuarios", { preHandler: soloAdmin }, async (req, reply) => {
   });
   const { passwordHash: _, ...resto } = usuario;
   return reply.code(201).send(resto);
+});
+
+// Edición con jerarquía: cada rol solo toca los roles que tiene a su cargo.
+app.patch("/api/usuarios/:id", { preHandler: soloGestionUsuarios }, async (req, reply) => {
+  const { id } = req.params as { id: string };
+  const body = (req.body ?? {}) as { nombre?: string; rol?: string; activo?: boolean; walletPubkey?: string | null };
+  const alcanzables = ROLES_ALCANZABLES[req.usuario!.rol] ?? [];
+  const objetivo = await prisma.usuario.findFirst({
+    where: { id, empresaId: req.usuario!.empresaId },
+  });
+  if (!objetivo) return reply.code(404).send({ error: "usuario no encontrado" });
+  if (!alcanzables.includes(objetivo.rol)) {
+    return reply.code(403).send({ error: "tu rol no puede editar ese usuario" });
+  }
+  if (body.rol && (!alcanzables.includes(body.rol) || !["ADMIN", "JEFE", "SUPERVISOR", "EMPLEADO"].includes(body.rol))) {
+    return reply.code(400).send({ error: "rol inválido o fuera de tu alcance" });
+  }
+  if (body.walletPubkey != null && !PUBKEY_BASE58.test(body.walletPubkey)) {
+    return reply.code(400).send({ error: "walletPubkey inválida" });
+  }
+
+  const usuario = await prisma.usuario.update({
+    where: { id },
+    data: {
+      ...(body.nombre?.trim() ? { nombre: body.nombre.trim() } : {}),
+      ...(body.rol ? { rol: body.rol } : {}),
+      ...(typeof body.activo === "boolean" ? { activo: body.activo } : {}),
+      ...(body.walletPubkey != null ? { walletPubkey: body.walletPubkey } : {}),
+    },
+  });
+  await prisma.auditLog.create({
+    data: { empresaId: usuario.empresaId, entidad: "usuario", entidadId: id, accion: "editada", actorId: req.usuario!.id },
+  });
+  const { passwordHash: _, ...resto } = usuario;
+  return resto;
 });
 
 // ---------- Wallet del usuario (RF-02) ----------

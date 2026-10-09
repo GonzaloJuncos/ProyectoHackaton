@@ -27,9 +27,7 @@ export default function Login() {
   return (
     <main className="login">
       <form onSubmit={onSubmit} className="card">
-        <div style={{ textAlign: "center", marginBottom: "0.75rem" }}>
-          <img src="/logo-logis.svg" alt="Logis" style={{ height: "36px", width: "auto" }} />
-        </div>
+        <img className="brand-login" src="/logo-logis-oscuro.svg" alt="Logis" />
         <p className="muted" style={{ textAlign: "center" }}>Pagos a proveedores en USDC</p>
         <label>
           Email

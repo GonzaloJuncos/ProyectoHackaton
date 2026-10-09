@@ -8,29 +8,39 @@ import Proveedores from "./pages/Proveedores";
 import Facturas from "./pages/Facturas";
 import Panel from "./pages/Panel";
 import Historial from "./pages/Historial";
+import Usuarios from "./pages/Usuarios";
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { usuario, logout } = useAuth();
   return (
-    <>
-      <nav className="topnav">
+    <div className="app-shell">
+      <aside className="sidebar">
         <Link to="/" className="brand">
-          <img src="/logo-logis.svg" alt="Logis" style={{ height: "24px", width: "auto", display: "inline-block", verticalAlign: "middle" }} />
+          <img src="/logo-logis-oscuro.svg" alt="Logis" />
         </Link>
-        <div className="nav-links">
+        <nav className="nav-links">
           <Link to="/">Conciliación</Link>
           <Link to="/facturas">Facturas</Link>
           <Link to="/proveedores">Proveedores</Link>
           <Link to="/historial">Historial</Link>
-        </div>
-        <div className="nav-user">
+          {usuario && ["ADMIN", "JEFE", "SUPERVISOR"].includes(usuario.rol) && (
+            <Link to="/usuarios">Usuarios</Link>
+          )}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-usdc">
+            <span className="wallet-dot" />
+            <span className="muted small">modo prueba · Solana devnet</span>
+          </div>
           <WalletButton client={client} />
-          <span>{usuario?.nombre} <em className="muted">({usuario?.rol.toLowerCase()})</em></span>
-          <button className="link" onClick={logout}>salir</button>
+          <div className="nav-user">
+            <span>{usuario?.nombre} <em className="muted">({usuario?.rol.toLowerCase()})</em></span>
+            <button className="link" onClick={logout}>salir</button>
+          </div>
         </div>
-      </nav>
+      </aside>
       <main className="contenido">{children}</main>
-    </>
+    </div>
   );
 }
 
@@ -52,6 +62,7 @@ export default function App() {
             <Route path="/proveedores" element={<Protegido><Proveedores /></Protegido>} />
             <Route path="/facturas" element={<Protegido><Facturas /></Protegido>} />
             <Route path="/historial" element={<Protegido><Historial /></Protegido>} />
+            <Route path="/usuarios" element={<Protegido><Usuarios /></Protegido>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

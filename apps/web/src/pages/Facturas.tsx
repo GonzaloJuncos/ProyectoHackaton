@@ -80,6 +80,8 @@ export default function Facturas() {
   const [empresa, setEmpresa] = useState<EmpresaInfo | null>(null);
   const [form, setForm] = useState({ proveedorId: "", ordenCompraId: "", numero: "", monto: "" });
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [formOc, setFormOc] = useState({ proveedorId: "", numero: "", monto: "" });
+  const [mostrarFormOc, setMostrarFormOc] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null); // facturaId/acción en curso
@@ -210,6 +212,29 @@ export default function Facturas() {
     }
   };
 
+  const onSubmitOc = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setEnviando(true);
+    try {
+      await api("/ordenes-compra", {
+        method: "POST",
+        body: JSON.stringify({
+          proveedorId: formOc.proveedorId,
+          numero: formOc.numero,
+          monto: Number(formOc.monto),
+        }),
+      });
+      setFormOc({ proveedorId: "", numero: "", monto: "" });
+      setMostrarFormOc(false);
+      await cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "error al crear la orden de compra");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   const onCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -247,7 +272,10 @@ export default function Facturas() {
         <div className="acciones">
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onCsv} hidden id="csv-input" />
           <button className="secundario" onClick={() => fileRef.current?.click()}>Importar CSV</button>
-          <button onClick={() => setMostrarForm(!mostrarForm)}>
+          <button className="secundario" onClick={() => { setMostrarFormOc(!mostrarFormOc); setMostrarForm(false); }}>
+            {mostrarFormOc ? "Cancelar" : "+ Nueva OC"}
+          </button>
+          <button onClick={() => { setMostrarForm(!mostrarForm); setMostrarFormOc(false); }}>
             {mostrarForm ? "Cancelar" : "+ Nueva factura"}
           </button>
         </div>
@@ -296,6 +324,40 @@ export default function Facturas() {
           <p className="muted small">La factura queda en estado "cargada" hasta que se cree la aprobación multisig.</p>
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Cargar factura"}</button>
+        </form>
+      )}
+
+      {mostrarFormOc && (
+        <form onSubmit={onSubmitOc} className="card form-proveedor">
+          <h3>Nueva orden de compra</h3>
+          <div className="grid-2">
+            <label>
+              Proveedor
+              <select
+                value={formOc.proveedorId}
+                required
+                onChange={(e) => setFormOc({ ...formOc, proveedorId: e.target.value })}
+              >
+                <option value="">elegir…</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Número de OC
+              <input value={formOc.numero} required placeholder="OC-2026-004"
+                onChange={(e) => setFormOc({ ...formOc, numero: e.target.value })} />
+            </label>
+            <label>
+              Monto (USD)
+              <input type="number" min="0.01" step="0.01" value={formOc.monto} required
+                onChange={(e) => setFormOc({ ...formOc, monto: e.target.value })} />
+            </label>
+          </div>
+          <p className="muted small">El agente verifica que cada factura no supere el monto de su OC.</p>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Crear OC"}</button>
         </form>
       )}
 
