@@ -16,9 +16,13 @@ export class ApiError extends Error {
   }
 }
 
+// En dev el proxy de Vite reenvía /api → localhost:3001.
+// En prod se apunta a la URL pública de la API con VITE_API_URL.
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

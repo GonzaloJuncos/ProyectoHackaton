@@ -1,0 +1,21 @@
+# Deploy de la API en Render (https://render.com — blueprint).
+# El front (apps/web, Vite) va en Vercel: root dir apps/web, env VITE_API_URL=https://<esta-api>.onrender.com
+# Acordate de setear CORS_ORIGIN con la URL pública del front.
+services:
+  - type: web
+    name: logis-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build --workspace apps/api && npx prisma generate --schema apps/api/prisma/schema.prisma && npx prisma db push --schema apps/api/prisma/schema.prisma
+    startCommand: node apps/api/dist/index.js
+    disk:
+      name: logis-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/var/data/dev.db
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        sync: false

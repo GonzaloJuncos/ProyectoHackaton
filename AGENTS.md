@@ -21,7 +21,7 @@ Sos un compañero de equipo en una hackathon. Respondé en español rioplatense,
 <!-- PROYECTO:START -->
 **Logis** — plataforma de pagos a proveedores para pymes arg/latam: facturas + aprobación multisig 2/3 (Squads) + agente que verifica la factura + pago USDC con hash on-chain + dashboard de conciliación. Cuña: cross-border.
 
-- Stack: `apps/web` Next.js+Tailwind, `apps/api` Node+Express+Prisma+SQLite, `packages/shared` tipos TS (contratos primero), Privy embedded wallets, Squads SDK, SPL USDC devnet.
+- Stack: `apps/web` Vite+React+`@solana/kit` (front de la demo), `apps/web-ui` Next.js+Tailwind (referencia de diseño, solo mock), `apps/api` Node+Fastify+Prisma+SQLite, `packages/shared` tipos TS (contratos primero), Phantom vía wallet-standard, Squads SDK, SPL USDC devnet.
 - División y flujo por ramas: `EQUIPO.md`. Requerimientos: `docs/requerimientos.md`.
 - Tarea actual y bloques: `proyecto/04-plan.md`. Memoria del proceso: `proyecto/`.
 <!-- PROYECTO:END -->

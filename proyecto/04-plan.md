@@ -6,11 +6,11 @@
 
 | Pieza | Elección | Por qué |
 |---|---|---|
-| `apps/web` | Next.js + Tailwind | Deploy gratis a URL pública en minutos (Vercel), lo conocen casi todos |
-| `apps/api` | Node + Express + Prisma + SQLite | Cero infra que instalar; migra a Postgres si hace falta |
+| `apps/web` | Vite + React + `@solana/kit` | Front funcional de la demo (apps/web-ui quedó como referencia de diseño) |
+| `apps/api` | Node + Fastify + Prisma + SQLite | Cero infra que instalar; migra a Postgres si hace falta |
 | `packages/shared` | Tipos TypeScript de contratos API | Matías los define primero: front mockea sin esperar al back |
 | Onchain | Squads SDK (2/3) + SPL Token USDC devnet + memo con hash | Programa auditado ya deployado; cumple el requisito onchain |
-| Wallets | Privy embedded (login Google → wallet sola) | El usuario no-cripto no instala nada (lección de Decimal) |
+| Wallets | Phantom vía wallet-standard (`@solana/kit-plugin-wallet`) | Implementado; Privy quedó descartado por tiempo (RF-02) |
 | Deploy | Vercel (web) + Render/Railway (API) | URL pública para los jurados |
 
 Reglas que aplican a TODO el trabajo: solo devnet, sin claves en repo/chat, toda tx se aprueba a mano mostrando destino/monto/token/red.
@@ -22,7 +22,7 @@ Funciones "vitrina" — lo que el jurado debe ver funcionando. Si falta tiempo, 
 - ⭐ **T2.4 Agente verificador** — el diferenciador vs CargoBill ("IA auditable")
 - ⭐ **T2.3 Squads 2/3** — gobernanza real visible
 - ⭐ **T2.5 Pago USDC con hash** — conciliación automática verificable en Explorer
-- ⭐ **T2.6 Privy** — UX invisible (criterio UX del jurado)
+- ⭐ **T2.6 Wallet firmante** — Phantom conectada y vinculada al usuario (criterio UX del jurado)
 - ⭐ **T3.1 Dashboard conciliación** — la evidencia auditable en pantalla
 
 ---
@@ -59,11 +59,11 @@ Funciones "vitrina" — lo que el jurado debe ver funcionando. Si falta tiempo, 
 | T2.3 | Matías | **Squads 2/3 real**: crear multisig devnet, proponer tx de pago, contar firmas | Requiere 2 aprobaciones on-chain |
 | T2.4 | BE Maxi | **Agente verificador**: dado un pago aprobado, chequea (factura existe, proveedor registrado, monto = OC, no duplicado) → aprueba o marca | Pago con factura adulterada NO se ejecuta |
 | T2.5 | BE Gonzalo | Wire completo: aprobación 2/3 → agente verifica → ejecución USDC con memo | Flujo E2E real en devnet |
-| T2.6 | FE Luli | Integrar Privy embedded wallet: cada firmante loguea con Google y firma sin instalar nada | 2 firmas desde cuentas distintas |
+| T2.6 | FE Luli | ~~Privy~~ Phantom via wallet-standard: cada firmante conecta su Phantom devnet y firma | 2 firmas desde cuentas distintas |
 | T2.7 | FE Luz | Importador CSV de facturas en UI | Sube CSV → lista de facturas |
 | T2.8 | Matías | Contrato final `shared/` + doc de endpoints para el equipo | Front y back alineados |
 
-**Checkpoint:** ¿podemos mostrar la demo hoy? Si Squads+Privy traba >1 día → plan B: firmas simuladas + pago real con memo (igual demuestra valor).
+**Checkpoint:** ¿podemos mostrar la demo hoy? Si Squads+Phantom traba >1 día → plan B: firmas simuladas + pago real con memo (igual demuestra valor).
 
 ## Bloque 3 — Pulir la demo (días 5-7)
 
@@ -87,14 +87,17 @@ Funciones "vitrina" — lo que el jurado debe ver funcionando. Si falta tiempo, 
 
 ## Riesgos y plan B
 
-1. **Squads/Privy traba la integración** → plan B: aprobaciones simuladas en API + pago USDC real con memo; sigue habiendo tx real on-chain.
+1. **Squads/Phantom traba la integración** → plan B: aprobaciones simuladas en API + pago USDC real con memo; sigue habiendo tx real on-chain.
 2. **El agente queda tonto** → mostrar su checklist de verificación en la UI aunque sea reglas simples; "IA auditable" es la narrativa.
 3. **RPC público devnet lento/caído** → RPC de Helius/Triton gratis (hub de Colosseum) o simular la demo con txs pregrabadas.
 
 ## Estado
 
-- [ ] Bloque 0 — Arranque
-- [ ] Bloque 1 — Esqueleto andante
-- [ ] Bloque 2 — Hacerlo real
-- [ ] Bloque 3 — Pulir demo
-- [ ] Bloque final — Cierre
+> Actualizado al 09/10. El flujo completo está implementado (API + front Vite + Squads + agente);
+> falta correrlo E2E en devnet con las wallets del equipo y el paquete de entrega.
+
+- [x] Bloque 0 — Arranque
+- [x] Bloque 1 — Esqueleto andante
+- [x] Bloque 2 — Hacerlo real (Squads 2/3, agente verificador, CSV, Phantom; T2.6 fue Phantom en vez de Privy)
+- [~] Bloque 3 — Pulir demo (hecho: dashboard, historial con checks del agente, seed realista, rebranding; falta: corrida E2E devnet, datos reales on-chain)
+- [ ] Bloque final — Cierre (deploy + URL pública, README inglés, videos, doble envío)

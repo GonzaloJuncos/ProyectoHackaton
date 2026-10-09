@@ -16,7 +16,7 @@ Narrativa: *"Una empresa argentina aprueba y paga a su proveedor del exterior en
 
 ## Entra (MVP)
 
-- Login con roles (administrador, jefe, supervisor, empleado) + wallet embebida para firmar (Privy o similar — el usuario no instala nada).
+- Login con roles (administrador, jefe, supervisor, empleado) + wallet Phantom en devnet para firmar (wallet-standard vía `@solana/kit`; decisión tomada: Phantom en vez de Privy embebida).
 - Alta de proveedores y carga de facturas (manual + CSV).
 - Multisig 2/3 con **Squads**; quien carga no puede aprobar (separación de funciones).
 - Agente verificador que ejecuta el pago **solo si la factura es correcta y ya tiene 2/3**.

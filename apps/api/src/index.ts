@@ -23,16 +23,18 @@ app.setErrorHandler((error: Error & { statusCode?: number }, req: FastifyRequest
   reply.code(statusCode).send({ error: mensaje });
 });
 
-// CORS restrictivo a orígenes conocidos en desarrollo / despliegue
+// CORS restrictivo a orígenes conocidos; en despliegue se amplía con CORS_ORIGIN (csv).
+const corsOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  ...(process.env.CORS_ORIGIN ?? "").split(",").map((o) => o.trim()).filter(Boolean),
+];
 await app.register(cors, {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-  ],
+  origin: corsOrigins,
   credentials: true,
 });
 

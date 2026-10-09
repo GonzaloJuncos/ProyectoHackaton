@@ -1,121 +1,71 @@
-# Hackathon Kit: de la idea al pitch con Devin
+# Logis — Supplier payments with on-chain approvals (Solana devnet)
 
-Kit de **skills para Devin** que guía a un equipo de hackathon de punta a punta: decidir **qué construir** antes de construir, validarlo contra lo que ya existe, recortarlo a algo demostrable y llegar a la entrega con un pitch.
+**Logis** is a supplier-payment platform for Latin American SMBs: the company registers providers, uploads invoices, approves payments through a **2-of-3 Squads multisig**, an **automated verification agent** checks each invoice before execution, and the **USDC payment settles on Solana in seconds** with the invoice hash embedded on-chain — producing an auditable reconciliation dashboard.
 
-Hecho para la **Colosseum Crypto World's Fair, track Superteam Argentina**, pero sirve para cualquier hackathon crypto.
+> **This project runs exclusively on Solana devnet.** All USDC is testnet value (free from faucets, worth nothing). No mainnet, no real funds.
 
-> Con un agente de código, escribir código es barato. Lo difícil es elegir bien qué construir y demostrar que importa. Este kit ataca eso.
+Built for the **Colosseum Crypto World's Fair** — Superteam Argentina track.
 
-## Cómo funciona
+## The problem
 
-Siete skills que se llaman con `/` dentro de Devin (o de cualquier agente compatible: Claude Code, Codex, Cursor). **Hacen preguntas de a una**, cuestionan la idea y dejan el trabajo escrito en `proyecto/`, que es la memoria del equipo entre sesiones: cada sesión nueva del agente arranca sin memoria.
+Paying suppliers — especially cross-border — is slow (SWIFT takes days, hides fees and FX costs), and reconciling invoices with payments is manual. Logis makes every payment provable: invoice ↔ multi-sig approvals ↔ on-chain transaction, verifiable in the Solana Explorer.
+
+## How it works (3-minute demo)
+
+1. An **employee** registers a provider and uploads an invoice (or imports a CSV).
+2. **Two of three approvers** (boss, supervisor, admin) sign the payment on-chain via a Squads 2/3 multisig.
+3. The **verification agent** checks the invoice: matches the purchase order, provider is registered and active, amount is within expectations, no duplicates. If it fails, the payment is blocked — the human signers can't bypass this.
+4. The **USDC payment executes on devnet** with the invoice's SHA-256 hash in a memo instruction.
+5. The **reconciliation dashboard** links invoice ↔ approvals ↔ transaction, with a direct Explorer link.
+
+## Architecture
 
 ```
-     /solana-tuc-empezar    cómo funciona el kit
-  -> /solana-tuc-idea       qué construir
-  -> /solana-tuc-validar    ¿vale la pena?
-  -> /solana-tuc-mvp        qué entra en las horas
-  -> /solana-tuc-planificar cómo se hace
-  -> (construir)
-  -> /solana-tuc-pitch      cómo se cuenta
+apps/
+  web/        React + Vite — the demo app (Phantom via @solana/kit wallet-standard)
+  web-ui/     Next.js design reference (mock data only — not wired)
+  api/        Fastify + Prisma + SQLite — never signs; it builds serialized
+              instructions and the browser wallets sign them on-chain
+packages/
+  shared/     TypeScript API contracts shared by front and back
+programa/     Reserved for a future own program (MVP uses Squads, already audited)
 ```
 
-| Skill | Qué hace | Archivo que deja |
-|---|---|---|
-| `/solana-tuc-empezar` | Explica cómo funciona todo el kit antes de arrancar (etapas, skills, reglas) e instala las skills externas que falten | (no escribe) |
-| `/solana-tuc-status` | Te ubica en el proceso y te dice el próximo paso | (no escribe) |
-| `/solana-tuc-idea` | Brainstorm guiado: equipo, problemas, ideas, filtro, elección | `proyecto/01-idea.md` |
-| `/solana-tuc-validar` | Investiga qué ya existe (con Colosseum Copilot si está instalada), ataca la idea y da un veredicto | `proyecto/02-validacion.md` |
-| `/solana-tuc-mvp` | Recorta a 3 funciones y define la demo de 3 minutos | `proyecto/03-mvp.md` |
-| `/solana-tuc-planificar` | Bloques de trabajo con tareas listas para pedirle a Devin; arma el `AGENTS.md` | `proyecto/04-plan.md` |
-| `/solana-tuc-pitch` | Deck, guiones de video en inglés y checklist de entrega | `proyecto/05-pitch.md` |
+**On-chain pieces:** [Squads v4 multisig](https://squads.so) (threshold 2-of-3), SPL-Token USDC devnet (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`), Memo program carrying `logis:factura:<sha256>`.
 
-Si la investigación dice que la idea es floja, `/solana-tuc-validar` no te manda a descartar a ciegas: te da un menú (angostar a la cuña, pivotar, clon consciente, descartar o veredicto provisional) según el patrón de mercado que encontró.
+## Run locally
 
-## Regla de oro: modo prueba, siempre
-
-Todo el kit trabaja sobre **devnet**, la red de prueba de Solana. La plata ahí es de mentira: sale de un faucet y no vale nada.
-
-- **Nunca** mainnet ni plata real durante la hackathon.
-- **Nunca** frases semilla ni claves privadas en el chat ni en archivos del repo.
-- Toda transacción que se firme o envíe pide aprobación, mostrando destino, monto, token y red.
-- Al entregar, se aclara a los jurados que el proyecto corre en devnet.
-
-## Para los participantes: arrancar
-
-### Opción A: instalar las skills (cualquier agente, recomendada)
-
-Necesitás Node.js 18 o superior. En la terminal:
+Requires Node 18+.
 
 ```bash
-npx skills add alejandrocol-dev/workspace-colosseum -g
+npm install
+cp apps/api/.env.example apps/api/.env   # DATABASE_URL=file:./dev.db
+npm run db:push && npm run db:seed        # creates and seeds SQLite
+npm run dev:api                           # http://localhost:3001
+npm run dev:web                           # http://localhost:5173
 ```
 
-Abrí tu agente (Devin, Claude Code, Codex, Cursor) en una carpeta vacía para el proyecto del equipo y escribí:
+Seed credentials (password `logis123` for all): `admin@`, `jefe@`, `supervisor@`, `empleado@logis.demo` — one per role. The seed includes 3 providers with real devnet wallets, 3 purchase orders and 8 invoices (one deliberately fails the agent's checks).
 
-```
-/solana-tuc-empezar
-```
+### To execute real payments on devnet
 
-Te explica cómo funciona el kit, se fija si tenés las dos skills externas que pide la Guía oficial 1 (`solana-dev` y `colosseum-copilot`) y, si falta alguna, te ofrece instalarla. Después abrí una sesión nueva y arrancá con `/solana-tuc-idea`.
+1. Each signer (admin/jefe/supervisor) logs in and connects a **Phantom wallet set to devnet** — its pubkey is linked to their user.
+2. The admin creates the company multisig from the Invoices screen.
+3. Fund the multisig vault with devnet USDC from <https://faucet.circle.com> (and devnet SOL for fees from any Solana faucet).
+4. Propose a payment, approve with a second signer, execute — then open the Explorer link and look for the `logis:factura:` memo.
 
-Si preferís dejar todo instalado desde la terminal:
+## Deploy
 
-```bash
-npx skills add solana-foundation/solana-dev-skill -g
-npx skills add ColosseumOrg/colosseum-copilot -g
-npx skills add alejandrocol-dev/workspace-colosseum -g
-```
+- **API** → Render via `render.yaml` (persistent disk for SQLite at `/var/data`; set `CORS_ORIGIN` to the front's public URL).
+- **Web** → Vercel, root dir `apps/web` (`vercel.json` included for SPA routing; set `VITE_API_URL` to the API's public URL).
 
-`-g` las instala globales; sin `-g` quedan solo en la carpeta actual. Para instalar una sola: `--skill solana-tuc-validar`. Cada skill trae en su carpeta `references/` los docs que necesita, así que andan fuera de este repo. El trabajo se guarda en `proyecto/` de la carpeta donde estén, y `/solana-tuc-planificar` crea el `AGENTS.md` si no existe.
+## Security model
 
-### Opción B: usar este repo como base (Devin)
+- No custody: the API never holds keys — every transaction is signed by a human wallet in the browser, always showing destination, amount, token and network.
+- The agent cannot skip multisig signatures: it only executes payments already approved 2/3 on-chain, and only if the invoice passes verification.
+- Role hierarchy: admin > boss > supervisor > employee (employees can upload but never approve).
 
-1. Instalá Devin (<https://devin.ai/desktop>) e iniciá sesión.
-2. Botón **Use this template** en GitHub (o clonalo) y abrí la carpeta en Devin. Las skills ya vienen en `.devin/skills/`.
-3. Abrí una sesión y escribí `/solana-tuc-empezar`.
+## Hackathon notes
 
-### En cualquiera de las dos
-
-En cualquier momento, `/solana-tuc-status` te dice en qué etapa están y cuál es el próximo paso. Cada skill empieza mostrando su propia guía (qué hace, qué necesitás, cuánto lleva y qué archivo deja) antes de preguntar si arrancan.
-
-**Si no sabés de cripto:** el kit asume que pueden ser principiantes. Cada término (devnet, wallet, USDC, votación onchain) se explica en una línea la primera vez que aparece. Si algo no se entiende, frenen y pidan que lo explique.
-
-**Cuánto tiempo lleva la parte de decidir:** `/solana-tuc-idea` y `/solana-tuc-validar` en la primera hora; `/solana-tuc-mvp` y `/solana-tuc-planificar` antes de escribir una línea de código.
-
-**Sin agente:** las skills también sirven como checklist humano. El método (preguntas, test de mesa, veredicto) no necesita IA para funcionar.
-
-## Para quien mantiene el kit
-
-`docs/` y `AGENTS.md` son la fuente. Si los editás, corré `./scripts/sync-references.sh` antes de commitear: copia esos archivos a las `references/` de cada skill, que es lo que se instala con `npx skills`.
-
-## Qué hay en el repo
-
-```
-.devin/skills/       las 7 skills solana-tuc-*, cada una con su references/
-scripts/             sync-references.sh: copia docs/ a las references/ de cada skill
-docs/                reglas y fechas, proyectos ganadores de referencia, guía de Devin, skills externas
-docs/ejemplo/        un proyecto completo de ejemplo (solo para mirar, NO es el tuyo)
-proyecto/            la memoria del equipo: arranca vacía, la llenan las skills
-AGENTS.md            instrucciones permanentes para Devin (/solana-tuc-planificar completa la sección del proyecto)
-```
-
-## Skills externas (las pide la Guía oficial 1)
-
-La guía de setup de la sede ya les pide instalar dos skills que el kit aprovecha si están:
-
-- **`colosseum-copilot`** → `/solana-tuc-validar` la usa para ver qué ya se hizo en 5.400+ entregas pasadas, y `/solana-tuc-pitch` para pedir feedback. Si no está instalada o falla el login, `/solana-tuc-validar` tiene plan B manual.
-- **`solana-dev`** → se activa sola al escribir código Solana con las librerías actuales.
-
-Instalación, autenticación (ojo: la Guía 1 muestra un método viejo — ver el doc), troubleshooting y reglas de seguridad en [`docs/skills-externas.md`](docs/skills-externas.md).
-
-## Construir rápido con Devin
-
-Leé [`docs/guia-devin-para-construir.md`](docs/guia-devin-para-construir.md): modelos, modos, rutina de trabajo y qué evitar.
-
-## Fuentes
-
-- Colosseum Crypto World's Fair: <https://colosseum.com/worldsfair>
-- Listing Superteam Argentina: <https://superteam.fun/earn/listing/colosseum-crypto-worlds-fair-hackathon-superteam-argentina-track>
-- Ganadores anteriores: <https://blog.colosseum.com>
-- Documentación de skills de Devin CLI: ver la carpeta de docs incluida con la instalación.
+- Everything was built during the hackathon window; prior work declared: none — the repo starts from the team's hackathon kit.
+- Devnet only, by design (RNF-01).
